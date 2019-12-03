@@ -263,7 +263,7 @@ close the profile or restart Anki."""))
             restoreGeom(self, "mainWindow")
             restoreState(self, "mainWindow")
         # titlebar
-        self.setWindowTitle(self.pm.name + " - Anki")
+        self.setWindowTitle(self.pm.name + " - Anki - 安忆课堂")
         # show and raise window for osx
         self.show()
         self.activateWindow()
@@ -686,6 +686,7 @@ title="%s" %s>%s</button>''' % (
 
     # expects a current profile and a loaded collection; reloads
     # collection after sync completes
+    # 同步collection，快捷键和点击界面按钮调用此方法
     def onSync(self):
         self.unloadCollection(self._onSync)
 
@@ -751,7 +752,7 @@ QTreeWidget {
 
     # Key handling
     ##########################################################################
-
+    # 设置快捷键
     def setupKeys(self):
         globalShortcuts = [
             ("Ctrl+:", self.onDebug),
@@ -1334,6 +1335,7 @@ will be lost. Continue?"""))
     def setupAppMsg(self):
         self.app.appMsg.connect(self.onAppMsg)
 
+    # 接收到消息
     def onAppMsg(self, buf):
         if self.state == "startup":
             # try again in a second

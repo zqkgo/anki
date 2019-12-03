@@ -157,6 +157,7 @@ def setupLang(pm, app, force=None):
         app.setLayoutDirection(Qt.LeftToRight)
     # qt
     _qtrans = QTranslator()
+    # 加载翻译文件
     if _qtrans.load("qt_" + lang, dir):
         app.installTranslator(_qtrans)
 

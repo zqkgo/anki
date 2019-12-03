@@ -21,6 +21,7 @@ class Toolbar:
         self.web.setFixedHeight(30)
         self.web.requiresCol = False
 
+    # 启动的过程中调用
     def draw(self):
         self.web.onBridgeCmd = self._linkHandler
         self.web.stdHtml(self._body % self._centerLinks(),
@@ -29,7 +30,7 @@ class Toolbar:
 
     # Available links
     ######################################################################
-
+    # 工具条按钮和链接
     def _centerLinks(self):
         links = [
             ["decks", _("Decks"), _("Shortcut key: %s") % "D"],
@@ -50,7 +51,7 @@ class Toolbar:
 
     # Link handling
     ######################################################################
-
+    # 点击工具条按钮调用此方法
     def _linkHandler(self, link):
         if link in self.link_handlers:
             self.link_handlers[link]()
