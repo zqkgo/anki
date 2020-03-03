@@ -46,6 +46,7 @@ class Reviewer:
         self.bottom = BottomBar(mw, mw.bottomWeb)
         hooks.card_did_leech.append(self.onLeech)
 
+    # 点击Study now会调用
     def show(self) -> None:
         self.mw.col.reset()
         self.mw.setStateShortcuts(self._shortcutKeys())  # type: ignore
@@ -248,7 +249,7 @@ The front of this card is empty. Please run Tools>Empty Cards."""
 
     # Answering a card
     ############################################################
-
+    # 回答完一张卡片调用
     def _answerCard(self, ease: int) -> None:
         "Reschedule card and show next."
         if self.mw.state != "review":

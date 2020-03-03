@@ -609,11 +609,15 @@ select id from notes where mid = ?)"""
         return avail
 
     def _availClozeOrds(self, m: NoteType, flds: str, allowEmpty: bool = True) -> List:
+        # 例如： ['1111,{{c1::22222}},33333,{{c1::44444}}', '']
         sflds = splitFields(flds)
+        # 字段名到字段序数的映射
         map = self.fieldMap(m)
         ords = set()
+        # 在"问题"模板中找到被设置为Cloze的field，例如{{cloze:Text}}，对应找到Text
         matches = re.findall("{{[^}]*?cloze:(?:[^}]?:)*(.+?)}}", m["tmpls"][0]["qfmt"])
         matches += re.findall("<%cloze:(.+?)%>", m["tmpls"][0]["qfmt"])
+        print("matches: {}".format(matches))
         for fname in matches:
             if fname not in map:
                 continue
