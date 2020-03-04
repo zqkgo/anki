@@ -590,6 +590,7 @@ select id from notes where mid = ?)"""
             elif type == "all":
                 ok = True
                 for idx in req:
+                    # 第idx个字段没有内容，而要求所有字段必现，所以不是这个template
                     if not fields[idx]:
                         # missing and was required
                         ok = False
@@ -600,6 +601,7 @@ select id from notes where mid = ?)"""
             elif type == "any":
                 ok = False
                 for idx in req:
+                    # 只要有一个字段有内容，就可能是这个template
                     if fields[idx]:
                         ok = True
                         break
@@ -614,14 +616,15 @@ select id from notes where mid = ?)"""
         # 字段名到字段序数的映射
         map = self.fieldMap(m)
         ords = set()
-        # 在"问题"模板中找到被设置为Cloze的field，例如{{cloze:Text}}，对应找到Text
+        # 在"问题"模板中找到被设置为Cloze的field，例如{{cloze:Text}}，对应找到Text1,Text2
         matches = re.findall("{{[^}]*?cloze:(?:[^}]?:)*(.+?)}}", m["tmpls"][0]["qfmt"])
         matches += re.findall("<%cloze:(.+?)%>", m["tmpls"][0]["qfmt"])
-        print("matches: {}".format(matches))
         for fname in matches:
+            # 被cloze的field是不是model(note type)中
             if fname not in map:
                 continue
             ord = map[fname][0]
+            # 从序号为ord的field的内容中，找到所有的cloze项（的序号）
             ords.update(
                 [int(m) - 1 for m in re.findall(r"(?s){{c(\d+)::.+?}}", sflds[ord])]
             )
