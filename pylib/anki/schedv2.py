@@ -7,7 +7,6 @@ import datetime
 import itertools
 import random
 import time
-import weakref
 from heapq import *
 from operator import itemgetter
 
@@ -38,7 +37,7 @@ class Scheduler:
     revCount: int
 
     def __init__(self, col: anki.storage._Collection) -> None:
-        self.col = weakref.proxy(col)
+        self.col = col.weakref()
         self.queueLimit = 50
         self.reportLimit = 1000
         self.dynReportLimit = 99999
@@ -474,7 +473,8 @@ select count() from
         if g["dyn"]:
             return self.dynReportLimit
         c = self.col.decks.confForDid(g["id"])
-        return max(0, c["new"]["perDay"] - g["newToday"][1])
+        limit = max(0, c["new"]["perDay"] - g["newToday"][1])
+        return hooks.scheduler_new_limit_for_single_deck(limit, g)
 
     def totalNewForCurrentDeck(self) -> int:
         return self.col.db.scalar(
@@ -867,14 +867,12 @@ and due <= ? limit ?)""",
         lim = max(0, c["rev"]["perDay"] - d["revToday"][1])
 
         if parentLimit is not None:
-            return min(parentLimit, lim)
-        elif "::" not in d["name"]:
-            return lim
-        else:
+            lim = min(parentLimit, lim)
+        elif "::" in d["name"]:
             for parent in self.col.decks.parents(d["id"]):
                 # pass in dummy parentLimit so we don't do parent lookup again
                 lim = min(lim, self._deckRevLimitSingle(parent, parentLimit=lim))
-            return lim
+        return hooks.scheduler_review_limit_for_single_deck(lim, d)
 
     def _revForDeck(self, did: int, lim: int, childMap: Dict[int, Any]) -> Any:
         dids = [did] + self.col.decks.childDids(did, childMap)
@@ -1291,7 +1289,7 @@ where id = ?
     # Tools
     ##########################################################################
 
-    def _cardConf(self, card: Card) -> Any:
+    def _cardConf(self, card: Card) -> Dict[str, Any]:
         return self.col.decks.confForDid(card.did)
 
     def _newConf(self, card: Card) -> Any:

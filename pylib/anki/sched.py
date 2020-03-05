@@ -6,7 +6,6 @@ from __future__ import annotations
 import itertools
 import random
 import time
-import weakref
 from heapq import *
 from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -32,7 +31,7 @@ class Scheduler(V2):
     def __init__(  # pylint: disable=super-init-not-called
         self, col: anki.storage._Collection
     ) -> None:
-        self.col = weakref.proxy(col)
+        self.col = col.weakref()
         self.queueLimit = 50
         self.reportLimit = 1000
         self.dynReportLimit = 99999
@@ -127,7 +126,7 @@ class Scheduler(V2):
         )
 
     def unburyCardsForDeck(self) -> None:  # type: ignore[override]
-        sids = ids2str(self.col.decks.active())
+        sids = self._deckLimit()
         self.col.log(
             self.col.db.list(
                 f"select id from cards where queue = {QUEUE_TYPE_SIBLING_BURIED} and did in %s"
@@ -247,18 +246,6 @@ class Scheduler(V2):
             return c
         # collapse or finish
         return self._getLrnCard(collapse=True)
-
-    # New cards
-    ##########################################################################
-
-    def totalNewForCurrentDeck(self) -> int:
-        return self.col.db.scalar(
-            f"""
-select count() from cards where id in (
-select id from cards where did in %s and queue = {QUEUE_TYPE_NEW} limit ?)"""
-            % ids2str(self.col.decks.active()),
-            self.reportLimit,
-        )
 
     # Learning queues
     ##########################################################################
@@ -537,7 +524,8 @@ and due <= ? limit ?)""",
         if d["dyn"]:
             return self.reportLimit
         c = self.col.decks.confForDid(d["id"])
-        return max(0, c["rev"]["perDay"] - d["revToday"][1])
+        limit = max(0, c["rev"]["perDay"] - d["revToday"][1])
+        return hooks.scheduler_review_limit_for_single_deck(limit, d)
 
     def _revForDeck(self, did: int, lim: int) -> int:  # type: ignore[override]
         lim = min(lim, self.reportLimit)
@@ -611,16 +599,6 @@ did = ? and queue = {QUEUE_TYPE_REV} and due <= ? limit ?""",
             return self._fillRev()
 
         return None
-
-    def totalRevForCurrentDeck(self) -> int:
-        return self.col.db.scalar(
-            f"""
-select count() from cards where id in (
-select id from cards where did in %s and queue = {QUEUE_TYPE_REV} and due <= ? limit ?)"""
-            % ids2str(self.col.decks.active()),
-            self.today,
-            self.reportLimit,
-        )
 
     # Answering a review card
     ##########################################################################
@@ -773,33 +751,6 @@ due = odue, odue = 0, odid = 0, usn = ? where %s"""
             self.col.usn(),
         )
 
-    def _dynOrder(self, o: int, l: int) -> str:
-        if o == DYN_OLDEST:
-            t = "(select max(id) from revlog where cid=c.id)"
-        elif o == DYN_RANDOM:
-            t = "random()"
-        elif o == DYN_SMALLINT:
-            t = "ivl"
-        elif o == DYN_BIGINT:
-            t = "ivl desc"
-        elif o == DYN_LAPSES:
-            t = "lapses desc"
-        elif o == DYN_ADDED:
-            t = "n.id"
-        elif o == DYN_REVADDED:
-            t = "n.id desc"
-        elif o == DYN_DUE:
-            t = "c.due"
-        elif o == DYN_DUEPRIORITY:
-            t = (
-                f"(case when queue={QUEUE_TYPE_REV} and due <= %d then (ivl / cast(%d-due+0.001 as real)) else 100000+due end)"
-                % (self.today, self.today)
-            )
-        else:
-            # if we don't understand the term, default to due order
-            t = "c.due"
-        return t + " limit %d" % l
-
     def _moveToDyn(self, did: int, ids: List[int]) -> None:  # type: ignore[override]
         deck = self.col.decks.get(did)
         data = []
@@ -865,9 +816,6 @@ did = ?, queue = %s, due = ?, usn = ? where id = ?"""
 
     # Tools
     ##########################################################################
-
-    def _cardConf(self, card: Card) -> Dict[str, Any]:
-        return self.col.decks.confForDid(card.did)
 
     def _newConf(self, card: Card) -> Dict[str, Any]:
         conf = self._cardConf(card)
@@ -944,7 +892,7 @@ did = ?, queue = %s, due = ?, usn = ? where id = ?"""
     ##########################################################################
 
     def haveBuried(self) -> bool:
-        sdids = ids2str(self.col.decks.active())
+        sdids = self._deckLimit()
         cnt = self.col.db.scalar(
             f"select 1 from cards where queue = {QUEUE_TYPE_SIBLING_BURIED} and did in %s limit 1"
             % sdids
