@@ -63,6 +63,7 @@ class Scheduler:
         return None
 
     def reset(self) -> None:
+        print("🌟 ---> 重置scheduler")
         self._updateCutoff()
         self._resetLrn()
         self._resetRev()
@@ -747,16 +748,20 @@ did = ? and queue = {QUEUE_TYPE_DAY_LEARN_RELEARN} and due <= ? limit ?""",
         tod = self._leftToday(conf["delays"], tot)
         return tot + tod * 1000
 
+    # left - 剩余还有几个steps？，不算跨天的
     def _leftToday(
         self, delays: List[int], left: int, now: Optional[int] = None,
     ) -> int:
         "The number of steps that can be completed by the day cutoff."
         if not now:
             now = intTime()
+        # 如果delays=[1,2,3,4]，left是3，则deplays=[2,3,4]
         delays = delays[-left:]
         ok = 0
         for i in range(len(delays)):
+            # 当前时间加上需要delay的秒数
             now += int(delays[i] * 60)
+            # 如果加上这个step的时间跨天了，则忽略
             if now > self.dayCutoff:
                 break
             ok = i
@@ -1289,6 +1294,7 @@ where id = ?
     # Tools
     ##########################################################################
 
+    # 获取卡片所在的deck的配置
     def _cardConf(self, card: Card) -> Dict[str, Any]:
         return self.col.decks.confForDid(card.did)
 

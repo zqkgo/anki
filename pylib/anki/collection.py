@@ -1038,6 +1038,8 @@ and type=0""",
         )
         self._logHnd.write(buf + "\n")
         if devMode:
+            # 打印debug日志
+            # 例如：[1583624321] schedv2.py:getCard(): {'data': '', 'did': 1580809995638, 'due': 33, 'factor': 2500, 'flags': 0, 'id': 1583592505382, 'ivl': 1, 'lapses': 0, 'left': 1001, 'mod': 1583593331, 'nid': 1583592494389, 'odid': 0, 'odue': 0, 'ord': 0, 'queue': 2, 'reps': 2, 'type': 2, 'usn': -1}
             print(buf)
 
     def _openLog(self) -> None:

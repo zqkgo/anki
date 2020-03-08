@@ -250,24 +250,30 @@ The front of this card is empty. Please run Tools>Empty Cards."""
     # Answering a card
     ############################################################
     # 回答完一张卡片调用
+    # ease对应点击按钮的序号，新卡片对应：Again-1 Good-2 Easy-3；复习卡片对应：Again-1 Hard-2 Good-3 Easy-4
     def _answerCard(self, ease: int) -> None:
         "Reschedule card and show next."
         if self.mw.state != "review":
             # showing resetRequired screen; ignore key
             return
+        # 检查卡片状态是不是“已显示答案”
         if self.state != "answer":
             return
         if self.mw.col.sched.answerButtons(self.card) < ease:
             return
+        # 设置card属性之前，调用钩子函数
         proceed, ease = gui_hooks.reviewer_will_answer_card(
             (True, ease), self, self.card
         )
         if not proceed:
             return
         self.mw.col.sched.answerCard(self.card, ease)
+         # 设置card属性之后，调用钩子函数
         gui_hooks.reviewer_did_answer_card(self, self.card, ease)
         self._answeredIds.append(self.card.id)
+        # 内存数据懒惰落库
         self.mw.autosave()
+        # 显示下一张卡片
         self.nextCard()
 
     # Handlers
@@ -324,6 +330,7 @@ The front of this card is empty. Please run Tools>Empty Cards."""
                 "selectedAnswerButton()", self._onAnswerButton
             )
 
+    # 
     def _onAnswerButton(self, val: str) -> None:
         # button selected?
         if val and val in "1234":

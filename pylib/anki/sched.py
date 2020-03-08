@@ -31,6 +31,7 @@ class Scheduler(V2):
     def __init__(  # pylint: disable=super-init-not-called
         self, col: anki.storage._Collection
     ) -> None:
+        print("🌟----> 初始化scheduler")
         self.col = col.weakref()
         self.queueLimit = 50
         self.reportLimit = 1000
@@ -39,24 +40,39 @@ class Scheduler(V2):
         self.lrnCount = 0
         self.revCount = 0
         self.newCount = 0
+        # 从collection的创建时间开始，今天是第几天
+        # 例如self.today=382，就是第382天
         self.today: Optional[int] = None
         self._haveQueues = False
         self._updateCutoff()
 
+    # 点击回答按钮之后调用
     def answerCard(self, card: Card, ease: int) -> None:
+        # 打印debug日志
         self.col.log()
+        # 检查ease值是否合法，对应最多4个按钮（学习中的卡片是3个）
         assert 1 <= ease <= 4
+        # 将卡片放入已复习stack
         self.col.markReview(card)
+        # 埋藏兄弟卡片
         if self._burySiblingsOnAnswer:
             self._burySiblings(card)
+        # 复习次数+1
         card.reps += 1
         # former is for logging new cards, latter also covers filt. decks
+        # 如果是new card，记录一下历史
         card.wasNew = card.type == CARD_TYPE_NEW  # type: ignore
+        # 如果card是在new card队列
+        # 在new card队列的卡片可能是新卡片或忘记的复习卡片（又回到new card queue）
         wasNewQ = card.queue == QUEUE_TYPE_NEW
+        print("回答前：card.queue: {}, card.type: {}".format(card.queue, card.type))
         if wasNewQ:
             # came from the new queue, move to learning
+            # 将card移动到learning card队列
             card.queue = QUEUE_TYPE_LRN
             # if it was a new card, it's now a learning card
+            # 如果卡片是新卡片，将其类型改成学习中的卡片
+            # 因为如果一个review card选了Again也会将其放入new card队列
             if card.type == CARD_TYPE_NEW:
                 card.type = CARD_TYPE_LRN
             # init reps to graduation
@@ -81,6 +97,7 @@ class Scheduler(V2):
         card.mod = intTime()
         card.usn = self.col.usn()
         card.flushSched()
+        print("回答后：card.queue: {}, card.type: {}".format(card.queue, card.type))
 
     def counts(self, card: Optional[Card] = None) -> Tuple[int, int, int]:
         counts = [self.newCount, self.lrnCount, self.revCount]
@@ -98,7 +115,8 @@ class Scheduler(V2):
         if card.queue == QUEUE_TYPE_DAY_LEARN_RELEARN:
             return QUEUE_TYPE_LRN
         return card.queue
-
+    
+    # 回答按钮的个数，对应按钮的最大序号，例如新卡片最多3个按钮，复习卡片最多4个按钮
     def answerButtons(self, card: Card) -> int:
         if card.odue:
             # normal review in dyn deck?
@@ -121,6 +139,7 @@ class Scheduler(V2):
                 f"select id from cards where queue = {QUEUE_TYPE_SIBLING_BURIED}"
             )
         )
+        # unbury就是将queue设置为type的值，只有new和review cards才会有这种情况
         self.col.db.execute(
             f"update cards set queue=type where queue = {QUEUE_TYPE_SIBLING_BURIED}"
         )
@@ -310,6 +329,7 @@ limit %d"""
     def _answerLrnCard(self, card: Card, ease: int) -> None:
         # ease 1=no, 2=yes, 3=remove
         conf = self._lrnConf(card)
+        # 如果card有odid，并且上一次不是new card
         if card.odid and not card.wasNew:  # type: ignore
             type = REVLOG_CRAM
         elif card.type == CARD_TYPE_REV:
@@ -398,13 +418,18 @@ limit %d"""
                 card.queue = card.type = CARD_TYPE_NEW
                 card.due = self.col.nextID("pos")
 
+    # 新卡片队列中的卡片，第一次学习的时候，计算当天剩余的step
     def _startingLeft(self, card: Card) -> int:
         if card.type == CARD_TYPE_REV:
+            # 使用lapse卡片的steps配置
             conf = self._lapseConf(card)
         else:
+            # 使用new卡片的steps配置
             conf = self._lrnConf(card)
         tot = len(conf["delays"])
+        # 计算今天剩余的step
         tod = self._leftToday(conf["delays"], tot)
+        print("---> tod: {}".format(tod))
         return tot + tod * 1000
 
     def _graduatingIvl(
@@ -817,11 +842,15 @@ did = ?, queue = %s, due = ?, usn = ? where id = ?"""
     # Tools
     ##########################################################################
 
+    # 获取针对新卡片(New Cards)的deck配置
     def _newConf(self, card: Card) -> Dict[str, Any]:
+        # 卡片所在的deck的配置
         conf = self._cardConf(card)
         # normal deck
+        # 不是filtered deck
         if not card.odid:
             return conf["new"]
+        # 如果是filtered deck
         # dynamic deck; override some attributes, use original deck for others
         oconf = self.col.decks.confForDid(card.odid)
         delays = conf["delays"] or oconf["new"]["delays"]
@@ -866,6 +895,7 @@ did = ?, queue = %s, due = ?, usn = ? where id = ?"""
     ##########################################################################
 
     def _updateCutoff(self) -> None:
+        print("🌟 ---> 更新day cut off")
         oldToday = self.today
         # days since col created
         self.today = int((time.time() - self.col.crt) // 86400)
@@ -885,6 +915,8 @@ did = ?, queue = %s, due = ?, usn = ? where id = ?"""
             update(deck)
         # unbury if the day has rolled over
         unburied = self.col.conf.get("lastUnburied", 0)
+        # 如果上次bury的日期早于今天则将QUEUE_TYPE_SIBLING_BURIED队列中的卡片还原到对应的队列（new或review队列）
+        print("---> 检查是否需要unbury卡片，lastUnburied:{}, self.today:{}".format(unburied, self.today))
         if unburied < self.today:
             self.unburyCards()
 
@@ -981,11 +1013,17 @@ update cards set queue={QUEUE_TYPE_SIBLING_BURIED},mod=?,usn=? where id in """
 
     def _burySiblings(self, card: Card) -> None:
         toBury = []
+        # 获取针对new cards的deck配置，是否bury
         nconf = self._newConf(card)
         buryNew = nconf.get("bury", True)
+        # 获取针对review cards的deck配置，是否bury
         rconf = self._revConf(card)
         buryRev = rconf.get("bury", True)
         # loop through and remove from queues
+        # 查询条件：
+        # 1. 和当前card属于同一note，即sibling cards
+        # 2. 队列在新卡片队列或复习中的卡片队列
+        # 3. 到期时间在今天以内
         for cid, queue in self.col.db.execute(
             f"""
 select id, queue from cards where nid=? and id!=?
@@ -995,6 +1033,7 @@ and (queue={QUEUE_TYPE_NEW} or (queue={QUEUE_TYPE_REV} and due<=?))""",
             self.today,
         ):
             if queue == QUEUE_TYPE_REV:
+                # 如果配置了隐藏review card，则将card id放入列表
                 if buryRev:
                     toBury.append(cid)
                 # if bury disabled, we still discard to give same-day spacing
@@ -1004,6 +1043,7 @@ and (queue={QUEUE_TYPE_NEW} or (queue={QUEUE_TYPE_REV} and due<=?))""",
                     pass
             else:
                 # if bury disabled, we still discard to give same-day spacing
+                # 如果配置了隐藏new card，则将card id放入列表
                 if buryNew:
                     toBury.append(cid)
                 try:
@@ -1011,7 +1051,9 @@ and (queue={QUEUE_TYPE_NEW} or (queue={QUEUE_TYPE_REV} and due<=?))""",
                 except ValueError:
                     pass
         # then bury
+        # 开始bury
         if toBury:
+            # 将卡片的所有siblings放入bury队列
             self.col.db.execute(
                 f"update cards set queue={QUEUE_TYPE_SIBLING_BURIED},mod=?,usn=? where id in "
                 + ids2str(toBury),
