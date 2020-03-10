@@ -706,6 +706,7 @@ class AddonsDialog(QDialog):
         self.setAcceptDrops(True)
         self.redrawAddons()
         restoreGeom(self, "addons")
+        gui_hooks.addons_dialog_will_show(self)
         self.show()
 
     def dragEnterEvent(self, event):
@@ -783,6 +784,7 @@ class AddonsDialog(QDialog):
                 or self.mgr.configAction(addon.dir_name)
             )
         )
+        gui_hooks.addons_dialog_did_change_selected_addon(self, addon)
         return
 
     def selectedAddons(self) -> List[str]:
@@ -1330,7 +1332,14 @@ class ConfigEditor(QDialog):
         except ValidationError as e:
             # The user did edit the configuration and entered a value
             # which can not be interpreted.
-            showInfo(tr(TR.ADDONS_CONFIG_VALIDATION_ERROR, problem=e.message))
+            showInfo(
+                tr(
+                    TR.ADDONS_CONFIG_VALIDATION_ERROR,
+                    problem=e.message,
+                    path="/".join(str(path) for path in e.path),
+                    schema=str(e.schema),
+                )
+            )
             return
         except Exception as e:
             showInfo(_("Invalid configuration: ") + repr(e))

@@ -11,6 +11,7 @@ import sys
 pylib = os.path.join(os.path.dirname(__file__), "..", "..", "pylib")
 sys.path.append(pylib)
 
+
 from tools.hookslib import Hook, update_file
 
 # Hook list
@@ -88,6 +89,21 @@ hooks = [
         name="reviewer_will_end",
         legacy_hook="reviewCleanup",
         doc="Called before Anki transitions from the review screen to another screen.",
+    ),
+    # Debug
+    ###################
+    Hook(
+        name="debug_console_will_show",
+        args=["debug_window: QDialog"],
+        doc="""Allows editing the debug window. E.g. setting a default code, or
+        previous code.""",
+    ),
+    Hook(
+        name="debug_console_did_evaluate_python",
+        args=["output: str", "query: str", "debug_window: QDialog"],
+        return_type="str",
+        doc="""Allows processing the debug result. E.g. logging queries and
+        result, saving last query to display it later...""",
     ),
     # Card layout
     ###################
@@ -471,6 +487,17 @@ def emptyNewCard():
         doc="""Allows changing the text of the json configuration that was
         received from the user before actually reading it. For
         example, you can replace new line in strings by some "\\\\n".""",
+    ),
+    Hook(
+        name="addons_dialog_will_show",
+        args=["dialog: aqt.addons.AddonsDialog"],
+        doc="""Allows changing the add-on dialog before it is shown. E.g. add
+        buttons.""",
+    ),
+    Hook(
+        name="addons_dialog_did_change_selected_addon",
+        args=["dialog: aqt.addons.AddonsDialog", "add_on: aqt.addons.AddonMeta"],
+        doc="""Allows doing an action when a single add-on is selected.""",
     ),
     # Other
     ###################
