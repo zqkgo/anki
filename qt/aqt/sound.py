@@ -93,15 +93,16 @@ class AVPlayer:
 
     def play_tags(self, tags: List[AVTag]) -> None:
         """Clear the existing queue, then start playing provided tags."""
+        self.clear_queue_and_maybe_interrupt()
         self._enqueued = tags[:]
-        self.maybe_interrupt()
         self._play_next_if_idle()
 
     def stop_and_clear_queue(self) -> None:
         self._enqueued = []
         self._stop_if_playing()
 
-    def maybe_interrupt(self) -> None:
+    def clear_queue_and_maybe_interrupt(self) -> None:
+        self._enqueued = []
         if self.interrupt_current_audio:
             self._stop_if_playing()
 
@@ -128,7 +129,6 @@ class AVPlayer:
     def _stop_if_playing(self) -> None:
         if self.current_player:
             self.current_player.stop()
-        self.current_player = None
 
     def _pop_next(self) -> Optional[AVTag]:
         if not self._enqueued:
@@ -217,10 +217,6 @@ def retryWait(proc: subprocess.Popen) -> int:
 ##########################################################################
 
 
-class PlayerInterrupted(Exception):
-    pass
-
-
 class SimpleProcessPlayer(Player):  # pylint: disable=abstract-method
     "A player that invokes a new process for each tag to play."
 
@@ -231,24 +227,25 @@ class SimpleProcessPlayer(Player):  # pylint: disable=abstract-method
         self._taskman = taskman
         self._terminate_flag = False
         self._process: Optional[subprocess.Popen] = None
-        self._lock = threading.Lock()
 
     def play(self, tag: AVTag, on_done: OnDoneCallback) -> None:
+        self._terminate_flag = False
         self._taskman.run_in_background(
             lambda: self._play(tag), lambda res: self._on_done(res, on_done)
         )
 
     def stop(self) -> None:
         self._terminate_flag = True
-        # block until stopped
-        t = time.time()
-        while self._terminate_flag and time.time() - t < 3:
-            time.sleep(0.1)
 
+    # note: mplayer implementation overrides this
     def _play(self, tag: AVTag) -> None:
         assert isinstance(tag, SoundOrVideoTag)
         self._process = subprocess.Popen(
-            self.args + [tag.filename], env=self.env, startupinfo=startup_info()
+            self.args + [tag.filename],
+            env=self.env,
+            startupinfo=startup_info(),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         self._wait_for_termination(tag)
 
@@ -258,38 +255,26 @@ class SimpleProcessPlayer(Player):  # pylint: disable=abstract-method
         )
 
         while True:
-            with self._lock:
-                # if .stop() timed out, another thread may run when
-                # there is no process
-                if not self._process:
-                    self._process = None
-                    self._terminate_flag = False
-                    return
+            # should we abort playing?
+            if self._terminate_flag:
+                self._process.terminate()
+                self._process = None
+                return
 
-                # should we abort playing?
-                if self._terminate_flag:
-                    self._process.terminate()
-                    self._process = None
-                    self._terminate_flag = False
-                    raise PlayerInterrupted()
-
-                # wait for completion
-                try:
-                    self._process.wait(0.1)
-                    if self._process.returncode != 0:
-                        print(f"player got return code: {self._process.returncode}")
-                    self._process = None
-                    self._terminate_flag = False
-                    return
-                except subprocess.TimeoutExpired:
-                    pass
+            # wait for completion
+            try:
+                self._process.wait(0.1)
+                if self._process.returncode != 0:
+                    print(f"player got return code: {self._process.returncode}")
+                self._process = None
+                return
+            except subprocess.TimeoutExpired:
+                # process still running, repeat loop
+                pass
 
     def _on_done(self, ret: Future, cb: OnDoneCallback) -> None:
         try:
             ret.result()
-        except PlayerInterrupted:
-            # don't fire done callback when interrupted
-            return
         except FileNotFoundError:
             showWarning(
                 _(
@@ -397,6 +382,8 @@ class SimpleMplayerSlaveModePlayer(SimpleMplayerPlayer):
             self.args + [tag.filename],
             env=self.env,
             stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
             startupinfo=startup_info(),
         )
         self._wait_for_termination(tag)
