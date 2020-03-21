@@ -85,7 +85,7 @@ class DataModel(QAbstractTableModel):
         self.cards: List[int] = []
         self.cardObjs: Dict[int, Card] = {}
 
-    def getCard(self, index):
+    def getCard(self, index: QModelIndex) -> Card:
         id = self.cards[index.row()]
         if not id in self.cardObjs:
             self.cardObjs[id] = self.col.getCard(id)
@@ -275,6 +275,9 @@ class DataModel(QAbstractTableModel):
     def columnType(self, column):
         return self.activeCols[column]
 
+    def time_format(self):
+        return "%Y-%m-%d"
+
     def columnData(self, index):
         row = index.row()
         col = index.column()
@@ -302,11 +305,11 @@ class DataModel(QAbstractTableModel):
                 t = "(" + t + ")"
             return t
         elif type == "noteCrt":
-            return time.strftime("%Y-%m-%d", time.localtime(c.note().id / 1000))
+            return time.strftime(self.time_format(), time.localtime(c.note().id / 1000))
         elif type == "noteMod":
-            return time.strftime("%Y-%m-%d", time.localtime(c.note().mod))
+            return time.strftime(self.time_format(), time.localtime(c.note().mod))
         elif type == "cardMod":
-            return time.strftime("%Y-%m-%d", time.localtime(c.mod))
+            return time.strftime(self.time_format(), time.localtime(c.mod))
         elif type == "cardReps":
             return str(c.reps)
         elif type == "cardLapses":
@@ -316,13 +319,13 @@ class DataModel(QAbstractTableModel):
         elif type == "note":
             return c.model()["name"]
         elif type == "cardIvl":
-            if c.type == 0:
+            if c.type == CARD_TYPE_NEW:
                 return _("(new)")
-            elif c.type == 1:
+            elif c.type == CARD_TYPE_LRN:
                 return _("(learning)")
             return self.col.backend.format_time_span(c.ivl * 86400)
         elif type == "cardEase":
-            if c.type == 0:
+            if c.type == CARD_TYPE_NEW:
                 return _("(new)")
             return "%d%%" % (c.factor / 10)
         elif type == "deck":
@@ -363,7 +366,7 @@ class DataModel(QAbstractTableModel):
             date = time.time() + ((c.due - self.col.sched.today) * 86400)
         else:
             return ""
-        return time.strftime("%Y-%m-%d", time.localtime(date))
+        return time.strftime(self.time_format(), time.localtime(date))
 
     def isRTL(self, index):
         col = index.column()
@@ -406,7 +409,7 @@ class StatusDelegate(QItemDelegate):
             col = theme_manager.qcolor(f"flag{c.userFlag()}-bg")
         elif c.note().hasTag("Marked"):
             col = theme_manager.qcolor("marked-bg")
-        elif c.queue == -1:
+        elif c.queue == QUEUE_TYPE_SUSPENDED:
             col = theme_manager.qcolor("suspended-bg")
         if col:
             brush = QBrush(col)
@@ -1933,7 +1936,7 @@ update cards set usn=?, mod=?, did=? where id in """
     ######################################################################
 
     def isSuspended(self):
-        return not not (self.card and self.card.queue == -1)
+        return not not (self.card and self.card.queue == QUEUE_TYPE_SUSPENDED)
 
     def onSuspend(self):
         self.editor.saveNow(self._onSuspend)

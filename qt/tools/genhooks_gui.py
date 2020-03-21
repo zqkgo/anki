@@ -341,6 +341,7 @@ hooks = [
     ),
     # Main
     ###################
+    Hook(name="backup_did_complete"),
     Hook(name="profile_did_open", legacy_hook="profileLoaded"),
     Hook(name="profile_will_close", legacy_hook="unloadProfile"),
     Hook(
@@ -412,6 +413,18 @@ def emptyNewCard():
         args=["note: anki.notes.Note"],
         legacy_hook="AddCards.noteAdded",
     ),
+    Hook(
+        name="add_cards_will_add_note",
+        args=["problem: Optional[str]", "note: anki.notes.Note"],
+        return_type="Optional[str]",
+        doc="""Decides whether the note should be added to the collection or
+        not. It is assumed to come from the addCards window.
+
+        reason_to_already_reject is the first reason to reject that
+        was found, or None. If your filter wants to reject, it should
+        replace return the reason to reject. Otherwise return the
+        input.""",
+    ),
     # Editing
     ###################
     Hook(
@@ -460,6 +473,10 @@ def emptyNewCard():
         return_type="str",
         legacy_hook="mungeEditingFontName",
     ),
+    Hook(
+        name="editor_web_view_did_init",
+        args=["editor_web_view: aqt.editor.EditorWebView"],
+    ),
     # Sound/video
     ###################
     Hook(name="av_player_will_play", args=["tag: anki.sound.AVTag"]),
@@ -499,6 +516,9 @@ def emptyNewCard():
         args=["dialog: aqt.addons.AddonsDialog", "add_on: aqt.addons.AddonMeta"],
         doc="""Allows doing an action when a single add-on is selected.""",
     ),
+    # Model
+    ###################
+    Hook(name="models_advanced_will_show", args=["advanced: QDialog"],),
     # Other
     ###################
     Hook(
