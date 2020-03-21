@@ -524,6 +524,7 @@ from the profile screen."
             open(self.path, "wb").close()
 
         def run(self):
+            # 数据写入到文件并进行zip压缩
             z = zipfile.ZipFile(self.path, "w", zipfile.ZIP_DEFLATED)
             z.writestr("collection.anki2", self.data)
             z.writestr("media", "{}")
@@ -531,22 +532,31 @@ from the profile screen."
 
     def backup(self) -> None:
         nbacks = self.pm.profile["numBackups"]
+        # 备份数设置为0或者dev模式下不备份
         if not nbacks or devMode:
             return
+        # 备份文件夹
         dir = self.pm.backupFolder()
+        # 当前collection DB的路径
         path = self.pm.collectionPath()
 
         # do backup
+        # 当前时间定义的备份文件名
         fname = time.strftime(
             "backup-%Y-%m-%d-%H.%M.%S.colpkg", time.localtime(time.time())
         )
+        # 新备份文件路径
         newpath = os.path.join(dir, fname)
+        # 读出当前collection DB文件的数据
         with open(path, "rb") as f:
             data = f.read()
+        # 启动备份线程，将collection数据写入新的备份文件
+        # 并进行zip压缩
         b = self.BackupThread(newpath, data)
         b.start()
 
         # find existing backups
+        # 找到所有的备份文件名并按文件名正序排列
         backups = []
         for file in os.listdir(dir):
             # only look for new-style format
@@ -560,6 +570,7 @@ from the profile screen."
         while len(backups) > nbacks:
             fname = backups.pop(0)
             path = os.path.join(dir, fname)
+            # 删除旧的备份文件
             os.unlink(path)
         gui_hooks.backup_did_complete()
 
