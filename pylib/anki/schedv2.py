@@ -550,6 +550,8 @@ limit %d"""
             % (self._deckLimit(), self.reportLimit),
             cutoff,
         )
+        for i in range(len(self._lrnQueue)):
+            self._lrnQueue[i] = (self._lrnQueue[i][0], self._lrnQueue[i][1])
         # as it arrives sorted by did first, we need to sort it
         self._lrnQueue.sort()
         return self._lrnQueue
@@ -1388,9 +1390,6 @@ where id = ?
     def _rolloverHour(self) -> int:
         return self.col.conf.get("rollover", 4)
 
-    # New timezone handling
-    ##########################################################################
-
     def _timing_today(self) -> SchedTimingToday:
         return self.col.backend.sched_timing_today(
             self.col.crt,
@@ -1410,6 +1409,12 @@ where id = ?
 
     def _creation_timezone_offset(self) -> Optional[int]:
         return self.col.conf.get("creationOffset", None)
+
+    # New timezone handling - GUI helpers
+    ##########################################################################
+
+    def new_timezone_enabled(self) -> bool:
+        return self.col.conf.get("creationOffset") is not None
 
     def set_creation_offset(self):
         """Save the UTC west offset at the time of creation into the DB.
