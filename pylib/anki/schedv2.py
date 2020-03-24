@@ -1391,21 +1391,26 @@ where id = ?
         return self.col.conf.get("rollover", 4)
 
     def _timing_today(self) -> SchedTimingToday:
+        roll: Optional[int] = None
+        if self.col.schedVer() > 1:
+            roll = self._rolloverHour()
         return self.col.backend.sched_timing_today(
             self.col.crt,
             self._creation_timezone_offset(),
             self._current_timezone_offset(),
-            self._rolloverHour(),
+            roll,
         )
 
-    def _current_timezone_offset(self) -> int:
+    def _current_timezone_offset(self) -> Optional[int]:
         if self.col.server:
-            return self.col.conf.get("localOffset", None)
+            mins = self.col.server.minutes_west
+            if mins is not None:
+                return mins
+            # older Anki versions stored the local offset in
+            # the config
+            return self.col.conf.get("localOffset", 0)
         else:
-            # note: while we could return None to sched_timing_today to have
-            # the backend calculate it, this function is also used to set
-            # localOffset, so it must not return None
-            return self.col.backend.local_minutes_west(intTime())
+            return None
 
     def _creation_timezone_offset(self) -> Optional[int]:
         return self.col.conf.get("creationOffset", None)

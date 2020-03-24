@@ -138,10 +138,6 @@ class _Collection:
             self.sched = V1Scheduler(self)
         elif ver == 2:
             self.sched = V2Scheduler(self)
-            if not self.server:
-                self.conf["localOffset"] = self.sched._current_timezone_offset()
-            elif self.server.minutes_west is not None:
-                self.conf["localOffset"] = self.server.minutes_west
 
     def changeSchedulerVer(self, ver: int) -> None:
         if ver == self.schedVer():
@@ -164,12 +160,13 @@ class _Collection:
 
         self._loadScheduler()
 
+    # the sync code uses this to send the local timezone to AnkiWeb
     def localOffset(self) -> Optional[int]:
         "Minutes west of UTC. Only applies to V2 scheduler."
         if isinstance(self.sched, V1Scheduler):
             return None
         else:
-            return self.sched._current_timezone_offset()
+            return self.backend.local_minutes_west(intTime())
 
     # DB-related
     ##########################################################################
@@ -254,6 +251,8 @@ crt=?, mod=?, scm=?, dty=?, usn=?, ls=?, conf=?""",
         if self.db:
             if save:
                 self.save(trx=False)
+            else:
+                self.db.rollback()
             if not self.server:
                 self.db.execute("pragma journal_mode = delete")
             self.backend.close_collection()
@@ -618,10 +617,16 @@ where c.nid = n.id and c.id in %s group by nid"""
 
     # if order=True, use the sort order stored in the collection config
     # if order=False, do no ordering
-    # if order is a string, that text is added after 'order by' in the sql statement
-    # if order is an int enum, sort using that builtin sort.
     #
-    # the reverse argument only applies when a BuiltinSortKind is provided.
+    # if order is a string, that text is added after 'order by' in the sql statement.
+    # you must add ' asc' or ' desc' to the order, as Anki will replace asc with
+    # desc and vice versa when reverse is set in the collection config, eg
+    # order="c.ivl asc, c.due desc"
+    #
+    # if order is an int enum, sort using that builtin sort, eg
+    # col.find_cards("", order=BuiltinSortKind.CARD_DUE)
+    # the reverse argument only applies when a BuiltinSortKind is provided;
+    # otherwise the collection config defines whether reverse is set or not
     def find_cards(
         self, query: str, order: Union[bool, str, int] = False, reverse: bool = False,
     ) -> Sequence[int]:
