@@ -24,6 +24,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use unicase::UniCase;
+use variant_count::VariantCount;
 
 const SCHEMA_MIN_VERSION: u8 = 11;
 const SCHEMA_MAX_VERSION: u8 = 11;
@@ -40,16 +41,6 @@ pub struct SqliteStorage {
 
     // fixme: stored in wrong location?
     path: PathBuf,
-}
-
-#[macro_export]
-macro_rules! cached_sql {
-    ( $label:expr, $db:expr, $sql:expr ) => {{
-        if $label.is_none() {
-            $label = Some($db.prepare_cached($sql)?);
-        }
-        $label.as_mut().unwrap()
-    }};
 }
 
 fn open_or_create_collection_db(path: &Path) -> Result<Connection> {
@@ -169,7 +160,7 @@ fn schema_version(db: &Connection) -> Result<(bool, u8)> {
 }
 
 fn trace(s: &str) {
-    println!("sql: {}", s)
+    println!("sql: {}", s.trim().replace('\n', " "));
 }
 
 impl SqliteStorage {
@@ -213,6 +204,14 @@ impl SqliteStorage {
     }
 }
 
+#[derive(Clone, Copy, VariantCount)]
+#[allow(clippy::enum_variant_names)]
+pub(super) enum CachedStatementKind {
+    GetCard,
+    UpdateCard,
+    AddCard,
+}
+
 pub(crate) struct StorageContext<'a> {
     pub(crate) db: &'a Connection,
     server: bool,
@@ -220,21 +219,36 @@ pub(crate) struct StorageContext<'a> {
 
     timing_today: Option<SchedTimingToday>,
 
-    // cards
-    pub(super) get_card_stmt: Option<rusqlite::CachedStatement<'a>>,
-    pub(super) update_card_stmt: Option<rusqlite::CachedStatement<'a>>,
+    cached_statements: Vec<Option<rusqlite::CachedStatement<'a>>>,
 }
 
 impl StorageContext<'_> {
     fn new(db: &Connection, server: bool) -> StorageContext {
+        let stmt_len = CachedStatementKind::VARIANT_COUNT;
+        let mut statements = Vec::with_capacity(stmt_len);
+        statements.resize_with(stmt_len, Default::default);
         StorageContext {
             db,
             server,
             usn: None,
             timing_today: None,
-            get_card_stmt: None,
-            update_card_stmt: None,
+            cached_statements: statements,
         }
+    }
+
+    pub(super) fn with_cached_stmt<F, T>(
+        &mut self,
+        kind: CachedStatementKind,
+        sql: &str,
+        func: F,
+    ) -> Result<T>
+    where
+        F: FnOnce(&mut rusqlite::CachedStatement) -> Result<T>,
+    {
+        if self.cached_statements[kind as usize].is_none() {
+            self.cached_statements[kind as usize] = Some(self.db.prepare_cached(sql)?);
+        }
+        func(self.cached_statements[kind as usize].as_mut().unwrap())
     }
 
     // Standard transaction start/stop
@@ -365,5 +379,44 @@ impl StorageContext<'_> {
             ));
         }
         Ok(*self.timing_today.as_ref().unwrap())
+    }
+}
+
+#[cfg(all(feature = "unstable", test))]
+mod bench {
+    extern crate test;
+    use super::{CachedStatementKind, SqliteStorage};
+    use std::path::Path;
+    use test::Bencher;
+
+    const SQL: &str = "insert or replace into cards
+    (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor,
+    reps, lapses, left, odue, odid, flags, data)
+    values
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    #[bench]
+    fn bench_no_cache(b: &mut Bencher) {
+        let storage = SqliteStorage::open_or_create(Path::new(":memory:")).unwrap();
+        b.iter(|| storage.db.prepare(SQL).unwrap());
+    }
+
+    #[bench]
+    fn bench_hash_cache(b: &mut Bencher) {
+        let storage = SqliteStorage::open_or_create(Path::new(":memory:")).unwrap();
+        b.iter(|| storage.db.prepare_cached(SQL).unwrap());
+    }
+
+    #[bench]
+    fn bench_vec_cache(b: &mut Bencher) {
+        let storage = SqliteStorage::open_or_create(Path::new(":memory:")).unwrap();
+        let mut ctx = storage.context(false);
+        b.iter(|| {
+            ctx.with_cached_stmt(CachedStatementKind::GetCard, SQL, |_stmt| {
+                test::black_box(_stmt);
+                Ok(())
+            })
+            .unwrap()
+        });
     }
 }

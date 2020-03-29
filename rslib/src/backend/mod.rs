@@ -260,6 +260,7 @@ impl Backend {
                 self.update_card(card)?;
                 OValue::UpdateCard(pb::Empty {})
             }
+            Value::AddCard(card) => OValue::AddCard(self.add_card(card)?),
         })
     }
 
@@ -638,7 +639,13 @@ impl Backend {
 
     fn update_card(&self, pbcard: pb::Card) -> Result<()> {
         let mut card = pbcard_to_native(pbcard)?;
-        self.with_col(|col| col.with_ctx(|ctx| ctx.update_card(&mut card)))
+        self.with_col(|col| col.transact(None, |ctx| ctx.update_card(&mut card)))
+    }
+
+    fn add_card(&self, pbcard: pb::Card) -> Result<i64> {
+        let mut card = pbcard_to_native(pbcard)?;
+        self.with_col(|col| col.transact(None, |ctx| ctx.add_card(&mut card)))?;
+        Ok(card.id.0)
     }
 }
 
