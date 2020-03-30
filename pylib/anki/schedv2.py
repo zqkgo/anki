@@ -48,11 +48,13 @@ class Scheduler:
 
     def getCard(self) -> Optional[Card]:
         """Pop the next card from the queue. None if finished."""
+        print("🌟 Scheduler.getCard(): 获取卡片")
         self._checkDay()
         if not self._haveQueues:
             self.reset()
         card = self._getCard()
         if card:
+            print("🌟 Scheduler.getCard(): 获取卡片成功，打印卡片信息日志")
             self.col.log(card)
             if not self._burySiblingsOnAnswer:
                 self._burySiblings(card)

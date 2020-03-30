@@ -48,6 +48,7 @@ class Scheduler(V2):
 
     # 点击回答按钮之后调用
     def answerCard(self, card: Card, ease: int) -> None:
+        print("🌟 Scheduler.answerCard 点击回答按钮成功， ease: {}".format(ease))
         # 打印debug日志
         self.col.log()
         # 检查ease值是否合法，对应最多4个按钮（学习中的卡片是3个）
@@ -65,7 +66,7 @@ class Scheduler(V2):
         # 如果card是在new card队列
         # 在new card队列的卡片可能是新卡片或忘记的复习卡片（又回到new card queue）
         wasNewQ = card.queue == QUEUE_TYPE_NEW
-        print("回答前：card.queue: {}, card.type: {}".format(card.queue, card.type))
+        print("🌟 Scheduler.answerCard 回答前, card.queue: {}, card.type: {}".format(queueName[card.queue], cardTypeName[card.type]))
         if wasNewQ:
             # came from the new queue, move to learning
             # 将card移动到learning card队列
@@ -96,8 +97,9 @@ class Scheduler(V2):
         self._updateStats(card, "time", card.timeTaken())
         card.mod = intTime()
         card.usn = self.col.usn()
-        print("回答后：card.queue: {}, card.type: {}".format(card.queue, card.type))
+        print("🌟 Scheduler.answerCard 回答后：card.queue: {}, card.type: {}".format(queueName[card.queue], cardTypeName[card.type]))
         card.flush()
+        print("🌟 Scheduler.answerCard 复习(学习)卡片结束\n\n")
         
     def counts(self, card: Optional[Card] = None) -> Tuple[int, int, int]:
         counts = [self.newCount, self.lrnCount, self.revCount]
@@ -431,7 +433,7 @@ limit %d"""
         tot = len(conf["delays"])
         # 计算今天剩余的step
         tod = self._leftToday(conf["delays"], tot)
-        print("---> tod: {}".format(tod))
+        print("🌟 今天剩余的step(s): {}".format(tod))
         return tot + tod * 1000
 
     def _graduatingIvl(

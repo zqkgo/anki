@@ -633,6 +633,7 @@ where c.nid = n.id and c.id in %s group by nid"""
         return self.backend.search_cards(query, order, reverse)
 
     def find_notes(self, query: str) -> Sequence[int]:
+        print("finding notes, query: {}", format(query))
         return self.backend.search_notes(query)
 
     def findReplace(

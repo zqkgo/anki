@@ -72,6 +72,7 @@ class Reviewer:
     ##########################################################################
 
     def nextCard(self) -> None:
+        print("🌟 reviewer.nextCard()，显示下一张卡片")
         elapsed = self.mw.col.timeboxReached()
         if elapsed:
             assert not isinstance(elapsed, bool)
@@ -175,6 +176,7 @@ class Reviewer:
         return self.typeAnsFilter(self.mw.prepare_card_text_for_display(buf))
 
     def _showQuestion(self) -> None:
+        print("🌟 reviewer._showQuestion(): 开始显示问题")
         self._reps += 1
         self.state = "question"
         self.typedAnswer: str = None

@@ -172,7 +172,7 @@ class Card:
         return min(total, self.timeLimit())
 
     def isEmpty(self) -> Optional[bool]:
-        print("---> ", self.note(), self.note().fields)
+        print("🌟 card.isEmpty(): 检查卡片是否为空")
         # self.note().fields表示card所属的note的所有字段的内容
         ords = self.col.models.availOrds(self.model(), joinFields(self.note().fields))
         if self.ord not in ords:
