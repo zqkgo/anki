@@ -479,7 +479,8 @@ class HttpSyncer:
         #     url = "https://l1sync.ankiweb.net/"
         # else:
         #     url = SYNC_BASE % (self.hostNum or "")
-        url = SYNC_BASE % (self.hostNum or "")
+        # url = SYNC_BASE % (self.hostNum or "")
+        url = "http://127.0.0.1:27701/"
         return url + self.prefix
 
     def assertOk(self, resp) -> None:
