@@ -18,7 +18,7 @@ pub fn open_collection<P: Into<PathBuf>>(
     log: Logger,
 ) -> Result<Collection> {
     let col_path = path.into();
-    let storage = SqliteStorage::open_or_create(&col_path)?;
+    let storage = SqliteStorage::open_or_create(&col_path, &i18n)?;
 
     let col = Collection {
         storage,
@@ -134,6 +134,7 @@ impl Collection {
         self.storage.downgrade_to_schema_11()
     }
 
+    // fixme: invalidate when config changes
     pub fn timing_today(&mut self) -> Result<SchedTimingToday> {
         if let Some(timing) = &self.state.timing_today {
             if timing.next_day_at > TimestampSecs::now().0 {
