@@ -99,7 +99,8 @@ class Scheduler(V2):
         card.usn = self.col.usn()
         print("🌟 Scheduler.answerCard 回答后：card.queue: {}, card.type: {}".format(queueName[card.queue], cardTypeName[card.type]))
         card.flush()
-        print("🌟 Scheduler.answerCard 复习(学习)卡片结束\n\n")
+        print("🌟 Scheduler.answerCard 复习(学习)卡片结束")
+        print("-"*60,"\n")
         
     def counts(self, card: Optional[Card] = None) -> Tuple[int, int, int]:
         counts = [self.newCount, self.lrnCount, self.revCount]
