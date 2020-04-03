@@ -485,13 +485,18 @@ class RustBackend:
         ).search_notes.note_ids
 
     def get_card(self, cid: int) -> Optional[pb.Card]:
-        return self._run_command(pb.BackendInput(get_card=cid)).get_card.card
+        output = self._run_command(pb.BackendInput(get_card=cid)).get_card
+        if output.HasField("card"):
+            return output.card
+        else:
+            return None
 
     def update_card(self, card: BackendCard) -> None:
         self._run_command(pb.BackendInput(update_card=card))
 
-    def add_card(self, card: BackendCard) -> None:
-        card.id = self._run_command(pb.BackendInput(add_card=card)).add_card
+    # returns the new card id
+    def add_card(self, card: BackendCard) -> int:
+        return self._run_command(pb.BackendInput(add_card=card)).add_card
 
     def get_deck_config(self, dcid: int) -> Dict[str, Any]:
         jstr = self._run_command(pb.BackendInput(get_deck_config=dcid)).get_deck_config
