@@ -3,7 +3,9 @@
 
 use crate::backend::dbproxy::db_command_bytes;
 use crate::backend_proto::backend_input::Value;
-use crate::backend_proto::{BuiltinSortKind, Empty, RenderedTemplateReplacement, SyncMediaIn};
+use crate::backend_proto::{
+    AddOrUpdateDeckConfigIn, BuiltinSortKind, Empty, RenderedTemplateReplacement, SyncMediaIn,
+};
 use crate::card::{Card, CardID};
 use crate::card::{CardQueue, CardType};
 use crate::collection::{open_collection, Collection};
@@ -268,8 +270,8 @@ impl Backend {
             }
             Value::AddCard(card) => OValue::AddCard(self.add_card(card)?),
             Value::GetDeckConfig(dcid) => OValue::GetDeckConfig(self.get_deck_config(dcid)?),
-            Value::AddOrUpdateDeckConfig(conf_json) => {
-                OValue::AddOrUpdateDeckConfig(self.add_or_update_deck_config(conf_json)?)
+            Value::AddOrUpdateDeckConfig(input) => {
+                OValue::AddOrUpdateDeckConfig(self.add_or_update_deck_config(input)?)
             }
             Value::AllDeckConfig(_) => OValue::AllDeckConfig(self.all_deck_config()?),
             Value::NewDeckConfig(_) => OValue::NewDeckConfig(self.new_deck_config()?),
@@ -281,6 +283,14 @@ impl Backend {
                 self.abort_media_sync();
                 OValue::AbortMediaSync(pb::Empty {})
             }
+            Value::BeforeUpload(_) => {
+                self.before_upload()?;
+                OValue::BeforeUpload(pb::Empty {})
+            }
+            Value::CanonifyTags(input) => OValue::CanonifyTags(self.canonify_tags(input)?),
+            Value::AllTags(_) => OValue::AllTags(self.all_tags()?),
+            Value::RegisterTags(input) => OValue::RegisterTags(self.register_tags(input)?),
+            Value::GetChangedTags(usn) => OValue::GetChangedTags(self.get_changed_tags(usn)?),
         })
     }
 
@@ -702,11 +712,11 @@ impl Backend {
         })
     }
 
-    fn add_or_update_deck_config(&self, conf_json: String) -> Result<i64> {
-        let mut conf: DeckConf = serde_json::from_str(&conf_json)?;
+    fn add_or_update_deck_config(&self, input: AddOrUpdateDeckConfigIn) -> Result<i64> {
+        let mut conf: DeckConf = serde_json::from_str(&input.config)?;
         self.with_col(|col| {
             col.transact(None, |col| {
-                col.add_or_update_deck_config(&mut conf)?;
+                col.add_or_update_deck_config(&mut conf, input.preserve_usn_and_mtime)?;
                 Ok(conf.id.0)
             })
         })
@@ -724,6 +734,54 @@ impl Backend {
 
     fn remove_deck_config(&self, dcid: i64) -> Result<()> {
         self.with_col(|col| col.transact(None, |col| col.remove_deck_config(DeckConfID(dcid))))
+    }
+
+    fn before_upload(&self) -> Result<()> {
+        self.with_col(|col| col.transact(None, |col| col.before_upload()))
+    }
+
+    fn canonify_tags(&self, tags: String) -> Result<pb::CanonifyTagsOut> {
+        self.with_col(|col| {
+            col.transact(None, |col| {
+                col.canonify_tags(&tags, col.usn()?)
+                    .map(|(tags, added)| pb::CanonifyTagsOut {
+                        tags,
+                        tag_list_changed: added,
+                    })
+            })
+        })
+    }
+
+    fn all_tags(&self) -> Result<pb::AllTagsOut> {
+        let tags = self.with_col(|col| col.storage.all_tags())?;
+        let tags: Vec<_> = tags
+            .into_iter()
+            .map(|(tag, usn)| pb::TagUsnTuple { tag, usn: usn.0 })
+            .collect();
+        Ok(pb::AllTagsOut { tags })
+    }
+
+    fn register_tags(&self, input: pb::RegisterTagsIn) -> Result<bool> {
+        self.with_col(|col| {
+            col.transact(None, |col| {
+                let usn = if input.preserve_usn {
+                    Usn(input.usn)
+                } else {
+                    col.usn()?
+                };
+                col.register_tags(&input.tags, usn, input.clear_first)
+            })
+        })
+    }
+
+    fn get_changed_tags(&self, usn: i32) -> Result<pb::GetChangedTagsOut> {
+        self.with_col(|col| {
+            col.transact(None, |col| {
+                Ok(pb::GetChangedTagsOut {
+                    tags: col.storage.get_changed_tags(Usn(usn))?,
+                })
+            })
+        })
     }
 }
 
