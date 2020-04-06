@@ -150,13 +150,13 @@ class DeckManager:
             self.col.sched.emptyDyn(did)
             if childrenToo:
                 for name, id in self.children(did):
-                    self.rem(id, cardsToo)
+                    self.rem(id, cardsToo, childrenToo=False)
         else:
             # delete children first
             if childrenToo:
                 # we don't want to delete children when syncing
                 for name, id in self.children(did):
-                    self.rem(id, cardsToo)
+                    self.rem(id, cardsToo, childrenToo=False)
             # delete cards too?
             if cardsToo:
                 # don't use cids(), as we want cards in cram decks too
@@ -524,8 +524,8 @@ class DeckManager:
     #############################################################
 
     def active(self) -> Any:
-        "The currrently active dids. Make sure to copy before modifying."
-        return self.col.conf["activeDecks"]
+        "The currrently active dids."
+        return self.col.get_config("activeDecks", [1])
 
     def selected(self) -> Any:
         "The currently selected did."
