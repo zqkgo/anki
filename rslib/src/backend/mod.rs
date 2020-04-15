@@ -1,35 +1,38 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-use crate::backend::dbproxy::db_command_bytes;
-use crate::backend_proto::{
-    AddOrUpdateDeckConfigIn, BuiltinSortKind, Empty, RenderedTemplateReplacement, SyncMediaIn,
+use crate::{
+    backend::dbproxy::db_command_bytes,
+    backend_proto as pb,
+    backend_proto::builtin_search_order::BuiltinSortKind,
+    backend_proto::{AddOrUpdateDeckConfigIn, Empty, RenderedTemplateReplacement, SyncMediaIn},
+    card::{Card, CardID},
+    card::{CardQueue, CardType},
+    collection::{open_collection, Collection},
+    config::SortKind,
+    deckconf::{DeckConf, DeckConfID},
+    decks::{Deck, DeckID},
+    err::{AnkiError, NetworkErrorKind, Result, SyncErrorKind},
+    i18n::{tr_args, I18n, TR},
+    latex::{extract_latex, extract_latex_expanding_clozes, ExtractedLatex},
+    log,
+    log::{default_logger, Logger},
+    media::check::MediaChecker,
+    media::sync::MediaSyncProgress,
+    media::MediaManager,
+    notes::NoteID,
+    notetype::{NoteType, NoteTypeID},
+    sched::cutoff::{local_minutes_west_for_stamp, sched_timing_today},
+    sched::timespan::{answer_button_time, learning_congrats, studied_today, time_span},
+    search::{search_cards, search_notes, SortMode},
+    template::{
+        render_card, without_legacy_template_directives, FieldMap, FieldRequirements,
+        ParsedTemplate, RenderedNode,
+    },
+    text::{extract_av_tags, strip_av_tags, AVTag},
+    timestamp::TimestampSecs,
+    types::Usn,
 };
-use crate::card::{Card, CardID};
-use crate::card::{CardQueue, CardType};
-use crate::collection::{open_collection, Collection};
-use crate::config::SortKind;
-use crate::deckconf::{DeckConf, DeckConfID};
-use crate::decks::DeckID;
-use crate::err::{AnkiError, NetworkErrorKind, Result, SyncErrorKind};
-use crate::i18n::{tr_args, I18n, TR};
-use crate::latex::{extract_latex, extract_latex_expanding_clozes, ExtractedLatex};
-use crate::log::{default_logger, Logger};
-use crate::media::check::MediaChecker;
-use crate::media::sync::MediaSyncProgress;
-use crate::media::MediaManager;
-use crate::notes::NoteID;
-use crate::sched::cutoff::{local_minutes_west_for_stamp, sched_timing_today};
-use crate::sched::timespan::{answer_button_time, learning_congrats, studied_today, time_span};
-use crate::search::{search_cards, search_notes, SortMode};
-use crate::template::{
-    render_card, without_legacy_template_directives, FieldMap, FieldRequirements, ParsedTemplate,
-    RenderedNode,
-};
-use crate::text::{extract_av_tags, strip_av_tags, AVTag};
-use crate::timestamp::TimestampSecs;
-use crate::types::Usn;
-use crate::{backend_proto as pb, log};
 use fluent::FluentValue;
 use futures::future::{AbortHandle, Abortable};
 use log::error;
@@ -304,6 +307,16 @@ impl Backend {
                 pb::Empty {}
             }),
             Value::GetAllConfig(_) => OValue::GetAllConfig(self.get_all_config()?),
+            Value::GetAllNotetypes(_) => OValue::GetAllNotetypes(self.get_all_notetypes()?),
+            Value::SetAllNotetypes(bytes) => {
+                self.set_all_notetypes(&bytes)?;
+                OValue::SetAllNotetypes(pb::Empty {})
+            }
+            Value::GetAllDecks(_) => OValue::GetAllDecks(self.get_all_decks()?),
+            Value::SetAllDecks(bytes) => {
+                self.set_all_decks(&bytes)?;
+                OValue::SetAllDecks(pb::Empty {})
+            }
         })
     }
 
@@ -840,6 +853,35 @@ impl Backend {
             serde_json::to_vec(&conf).map_err(Into::into)
         })
     }
+
+    fn set_all_notetypes(&self, json: &[u8]) -> Result<()> {
+        let val: HashMap<NoteTypeID, NoteType> = serde_json::from_slice(json)?;
+        self.with_col(|col| {
+            col.transact(None, |col| {
+                col.storage
+                    .set_all_notetypes(val, col.usn()?, TimestampSecs::now())
+            })
+        })
+    }
+
+    fn get_all_notetypes(&self) -> Result<Vec<u8>> {
+        self.with_col(|col| {
+            let nts = col.storage.get_all_notetypes()?;
+            serde_json::to_vec(&nts).map_err(Into::into)
+        })
+    }
+
+    fn set_all_decks(&self, json: &[u8]) -> Result<()> {
+        let val: HashMap<DeckID, Deck> = serde_json::from_slice(json)?;
+        self.with_col(|col| col.transact(None, |col| col.storage.set_all_decks(val)))
+    }
+
+    fn get_all_decks(&self) -> Result<Vec<u8>> {
+        self.with_col(|col| {
+            let decks = col.storage.get_all_decks()?;
+            serde_json::to_vec(&decks).map_err(Into::into)
+        })
+    }
 }
 
 fn translate_arg_to_fluent_val(arg: &pb::TranslateArgValue) -> FluentValue {
@@ -913,7 +955,7 @@ fn media_sync_progress(p: &MediaSyncProgress, i18n: &I18n) -> pb::MediaSyncProgr
 
 fn sort_kind_from_pb(kind: i32) -> SortKind {
     use SortKind as SK;
-    match pb::BuiltinSortKind::from_i32(kind) {
+    match BuiltinSortKind::from_i32(kind) {
         Some(pbkind) => match pbkind {
             BuiltinSortKind::NoteCreation => SK::NoteCreation,
             BuiltinSortKind::NoteMod => SK::NoteMod,

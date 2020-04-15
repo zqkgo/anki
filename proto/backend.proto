@@ -65,6 +65,10 @@ message BackendInput {
         SetConfigJson set_config_json = 53;
         bytes set_all_config = 54;
         Empty get_all_config = 55;
+        Empty get_all_notetypes = 56;
+        bytes set_all_notetypes = 57;
+        Empty get_all_decks = 58;
+        bytes set_all_decks = 59;
     }
 }
 
@@ -113,6 +117,10 @@ message BackendOutput {
         Empty set_config_json = 53;
         Empty set_all_config = 54;
         bytes get_all_config = 55;
+        bytes get_all_notetypes = 56;
+        Empty set_all_notetypes = 57;
+        bytes get_all_decks = 58;
+        Empty set_all_decks = 59;
 
         BackendError error = 2047;
     }
@@ -385,25 +393,25 @@ message SearchNotesOut {
 }
 
 message BuiltinSearchOrder {
+    enum BuiltinSortKind {
+        NOTE_CREATION = 0;
+        NOTE_MOD = 1;
+        NOTE_FIELD = 2;
+        NOTE_TAGS = 3;
+        NOTE_TYPE = 4;
+        CARD_MOD = 5;
+        CARD_REPS = 6;
+        CARD_DUE = 7;
+        CARD_EASE = 8;
+        CARD_LAPSES = 9;
+        CARD_INTERVAL = 10;
+        CARD_DECK = 11;
+        CARD_TEMPLATE = 12;
+    }
     BuiltinSortKind kind = 1;
     bool reverse = 2;
 }
 
-enum BuiltinSortKind {
-    NOTE_CREATION = 0;
-    NOTE_MOD = 1;
-    NOTE_FIELD = 2;
-    NOTE_TAGS = 3;
-    NOTE_TYPE = 4;
-    CARD_MOD = 5;
-    CARD_REPS = 6;
-    CARD_DUE = 7;
-    CARD_EASE = 8;
-    CARD_LAPSES = 9;
-    CARD_INTERVAL = 10;
-    CARD_DECK = 11;
-    CARD_TEMPLATE = 12;
-}
 
 message GetCardOut {
     Card card = 1;

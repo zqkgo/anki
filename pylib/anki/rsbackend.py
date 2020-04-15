@@ -45,7 +45,7 @@ from anki.utils import intTime
 assert ankirspy.buildhash() == anki.buildinfo.buildhash
 
 SchedTimingToday = pb.SchedTimingTodayOut
-BuiltinSortKind = pb.BuiltinSortKind
+BuiltinSortKind = pb.BuiltinSearchOrder.BuiltinSortKind
 BackendCard = pb.Card
 TagUsnTuple = pb.TagUsnTuple
 
@@ -112,6 +112,8 @@ def proto_exception_to_native(err: pb.BackendError) -> Exception:
     elif val == "template_parse":
         return TemplateError(err.localized)
     elif val == "invalid_input":
+        return StringError(err.localized)
+    elif val == "json_error":
         return StringError(err.localized)
     else:
         assert_impossible_literal(val)
@@ -605,6 +607,24 @@ class RustBackend:
 
     def set_all_config(self, conf: Dict[str, Any]):
         self._run_command(pb.BackendInput(set_all_config=orjson.dumps(conf)))
+
+    def get_all_notetypes(self) -> Dict[str, Dict[str, Any]]:
+        jstr = self._run_command(
+            pb.BackendInput(get_all_notetypes=pb.Empty())
+        ).get_all_notetypes
+        return orjson.loads(jstr)
+
+    def set_all_notetypes(self, nts: Dict[str, Dict[str, Any]]):
+        self._run_command(pb.BackendInput(set_all_notetypes=orjson.dumps(nts)))
+
+    def get_all_decks(self) -> Dict[str, Dict[str, Any]]:
+        jstr = self._run_command(
+            pb.BackendInput(get_all_decks=pb.Empty())
+        ).get_all_decks
+        return orjson.loads(jstr)
+
+    def set_all_decks(self, nts: Dict[str, Dict[str, Any]]):
+        self._run_command(pb.BackendInput(set_all_decks=orjson.dumps(nts)))
 
 
 def translate_string_in(

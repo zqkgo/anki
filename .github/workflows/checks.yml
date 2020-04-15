@@ -97,79 +97,45 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ${{ github.workspace }}${{ matrix.SEP }}pyenv
-          key: |
-            ${{ runner.os }}-pyenv-
-            ${{ hashFiles('**/requirements.*') }}-
-            ${{ hashFiles('**/setup.py') }}-
-            ${{ hashFiles('**/Makefile') }}-14-
+          key: ${{ runner.os }}-pyenv-${{ hashFiles('**/requirements.*') }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/Makefile') }}-14-
 
-      - name: Cache pip wheels
-        if: matrix.BUILD_TYPE == 'build'
-        uses: actions/cache@v1
-        with:
-          path: ${{ matrix.PIP_WHEELS_DIR }}
-          key: |
-            ${{ runner.os }}-pip-wheels-
-            ${{ hashFiles('**/requirements.txt') }}-
-            ${{ hashFiles('**/setup.py') }}-14-
+      # # Disable it in attempt to reduce the overall cache size (https://github.com/ankitects/anki/pull/528)
+      # - name: Cache pip wheels
+      #   if: matrix.BUILD_TYPE == 'build'
+      #   uses: actions/cache@v1
+      #   with:
+      #     path: ${{ matrix.PIP_WHEELS_DIR }}
+      #     key: ${{ runner.os }}-pip-wheels-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/setup.py') }}-14-
 
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
           path: ${{ matrix.CARGO_INDEX_DIR }}
-          key: |
-            ${{ runner.os }}-cargo-index-
-            ${{ hashFiles('**/requirements.*') }}-
-            ${{ hashFiles('**/setup.py') }}-
-            ${{ hashFiles('**/Makefile') }}-
-            ${{ hashFiles('**/Cargo.toml') }}-14-
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/requirements.*') }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/Makefile') }}-${{ hashFiles('**/Cargo.toml') }}-14-
 
       - name: Cache cargo registry
         uses: actions/cache@v1
         with:
           path: ${{ matrix.CARGO_REGISTRY_DIR }}
-          key: |
-            ${{ runner.os }}-cargo-registry-
-            ${{ hashFiles('**/requirements.*') }}-
-            ${{ hashFiles('**/setup.py') }}-
-            ${{ hashFiles('**/Makefile') }}-
-            ${{ hashFiles('**/Cargo.toml') }}-14-
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/requirements.*') }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/Makefile') }}-${{ hashFiles('**/Cargo.toml') }}-14-
 
       - name: Cache cargo target
         uses: actions/cache@v1
         with:
           path: ${{ github.workspace }}${{ matrix.SEP }}target
-          key: |
-            ${{ runner.os }}-cargo-target-
-            ${{ hashFiles('**/requirements.*') }}-
-            ${{ hashFiles('**/setup.py') }}-
-            ${{ hashFiles('**/Makefile') }}-
-            ${{ hashFiles('**/Cargo.toml') }}-
-            ${{ matrix.BUILD_TYPE }}-14-
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/requirements.*') }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/Makefile') }}-${{ hashFiles('**/Cargo.toml') }}-${{ matrix.BUILD_TYPE }}-14-
 
       - name: Cache cargo rslib
         uses: actions/cache@v1
         with:
           path: ${{ github.workspace }}${{ matrix.SEP }}rslib${{ matrix.SEP }}target
-          key: |
-            ${{ runner.os }}-cargo-rslib-
-            ${{ hashFiles('**/requirements.*') }}-
-            ${{ hashFiles('**/setup.py') }}-
-            ${{ hashFiles('**/Makefile') }}-
-            ${{ hashFiles('**/Cargo.toml') }}-
-            ${{ matrix.BUILD_TYPE }}-14-
+          key: ${{ runner.os }}-cargo-rslib-${{ hashFiles('**/requirements.*') }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/Makefile') }}-${{ hashFiles('**/Cargo.toml') }}-${{ matrix.BUILD_TYPE }}-14-
 
       - name: Cache cargo rspy
         uses: actions/cache@v1
         with:
           path: ${{ github.workspace }}${{ matrix.SEP }}rspy${{ matrix.SEP }}target
-          key: |
-            ${{ runner.os }}-cargo-rspy-
-            ${{ hashFiles('**/requirements.*') }}-
-            ${{ hashFiles('**/setup.py') }}-
-            ${{ hashFiles('**/Makefile') }}-
-            ${{ hashFiles('**/Cargo.toml') }}-
-            ${{ matrix.BUILD_TYPE }}-14-
+          key: ${{ runner.os }}-cargo-rspy-${{ hashFiles('**/requirements.*') }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/Makefile') }}-${{ hashFiles('**/Cargo.toml') }}-${{ matrix.BUILD_TYPE }}-14-
 
       - name: Cache pacman
         if: matrix.os == 'windows-latest'
@@ -177,9 +143,7 @@ jobs:
         id: cache-pacman
         with:
           path: C:\Program Files\Git
-          key: |
-            ${{ runner.os }}-pacman-
-            ${{ hashFiles('**/checks.yml') }}-14-
+          key: ${{ runner.os }}-pacman-${{ hashFiles('**/checks.yml') }}-14-
 
       - name: Set up pacman, rsync
         if: matrix.os == 'windows-latest' && steps.cache-pacman.outputs.cache-hit != 'true'
@@ -216,13 +180,12 @@ jobs:
           pacman -Sccv --noconfirm
           pacman -Qsv --noconfirm
 
-      - name: Set up curl pyaudio, rename
+      - name: Set up curl pyaudio
         if: matrix.os == 'windows-latest'
         shell: cmd
         run: |
           echo on
           curl -LO https://download.lfd.uci.edu/pythonlibs/s2jqpv5t/%pyaudio%
-          curl -LO https://raw.githubusercontent.com/subogero/rename/master/rename
 
       - name: Set up Windows scoop, gettext, ripgrep
         if: matrix.os == 'windows-latest'
@@ -232,19 +195,19 @@ jobs:
           powershell -executionpolicy bypass "& Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')"
           scoop install -g gettext ripgrep
 
-      - name: Set up Ubuntu ripgrep, pyaudio, gettext, rename
+      - name: Set up Ubuntu ripgrep, pyaudio, gettext
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -x
           sudo apt update
-          sudo apt install portaudio19-dev gettext rename
+          sudo apt install portaudio19-dev gettext
           sudo snap install ripgrep --classic
 
-      - name: Set up brew ripgrep, pyaudio, gettext, rename
+      - name: Set up brew ripgrep, pyaudio, gettext
         if: matrix.os == 'macos-latest'
         run: |
           set -x
-          brew install portaudio protobuf gettext rename ripgrep make
+          brew install portaudio protobuf gettext ripgrep make
           brew link gettext --force
 
       - name: Set up python

@@ -160,15 +160,16 @@ class _Collection:
             self.dty,  # no longer used
             self._usn,
             self.ls,
-            models,
             decks,
         ) = self.db.first(
             """
 select crt, mod, scm, dty, usn, ls,
-models, decks from col"""
+decks from col"""
         )
-        self.models.load(models)
-        self.decks.load(decks)
+        self.decks.decks = self.backend.get_all_decks()
+        self.decks.changed = False
+        self.models.models = self.backend.get_all_notetypes()
+        self.models.changed = False
 
     def setMod(self) -> None:
         """Mark DB modified.
@@ -194,6 +195,9 @@ crt=?, mod=?, scm=?, dty=?, usn=?, ls=?""",
     def flush_all_changes(self, mod: Optional[int] = None):
         self.models.flush()
         self.decks.flush()
+        # set mod flag if mtime changed by backend
+        if self.db.scalar("select mod from col") != self.mod:
+            self.db.mod = True
         if self.db.mod:
             self.flush(mod)
 

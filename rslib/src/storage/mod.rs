@@ -3,7 +3,9 @@
 
 mod card;
 mod config;
+mod deck;
 mod deckconf;
+mod notetype;
 mod sqlite;
 mod tag;
 mod upgrades;

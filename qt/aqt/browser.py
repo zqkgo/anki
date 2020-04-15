@@ -20,6 +20,7 @@ from anki import hooks
 from anki.cards import Card
 from anki.collection import _Collection
 from anki.consts import *
+from anki.decks import DeckManager
 from anki.lang import _, ngettext
 from anki.models import NoteType
 from anki.notes import Note
@@ -254,12 +255,17 @@ class DataModel(QAbstractTableModel):
         idx = focusedIdx or firstIdx
         tv = self.browser.form.tableView
         if idx:
-            tv.selectRow(idx.row())
+            row = idx.row()
+            pos = tv.rowViewportPosition(row)
+            visible = pos >= 0 and pos < tv.viewport().height()
+            tv.selectRow(row)
+
             # we save and then restore the horizontal scroll position because
             # scrollTo() also scrolls horizontally which is confusing
-            h = tv.horizontalScrollBar().value()
-            tv.scrollTo(idx, tv.PositionAtCenter)
-            tv.horizontalScrollBar().setValue(h)
+            if not visible:
+                h = tv.horizontalScrollBar().value()
+                tv.scrollTo(idx, tv.PositionAtCenter)
+                tv.horizontalScrollBar().setValue(h)
             if count < 500:
                 # discard large selections; they're too slow
                 sm.select(
@@ -692,7 +698,7 @@ class Browser(QMainWindow):
         evt.ignore()
 
     def _closeWindow(self):
-        self._cancelPreviewTimer()
+        self._cleanup_preview()
         self.editor.cleanup()
         saveSplitter(self.form.splitter, "editor3")
         saveGeom(self, "editor")
@@ -1302,7 +1308,7 @@ QTableView {{ gridline-color: {grid} }}
         def addDecks(parent, decks):
             for head, did, rev, lrn, new, children in decks:
                 name = self.mw.col.decks.get(did)["name"]
-                shortname = name.split("::")[-1]
+                shortname = DeckManager.basename(name)
                 if children:
                     subm = parent.addMenu(shortname)
                     subm.addItem(_("Filter"), self._filterFunc("deck", name))
@@ -1568,16 +1574,20 @@ where id in %s"""
             self._previewer.close()
             self._previewer = None
         else:
-            self._previewer = PreviewDialog(self, self.mw)
+            self._previewer = PreviewDialog(self, self.mw, self._on_preview_closed)
             self._previewer.open()
 
     def _renderPreview(self, cardChanged=False):
         if self._previewer:
             self._previewer.render_card(cardChanged)
 
-    def _cancelPreviewTimer(self):
+    def _cleanup_preview(self):
         if self._previewer:
             self._previewer.cancel_timer()
+            self._previewer.close()
+
+    def _on_preview_closed(self):
+        self._previewer = None
 
     # Card deletion
     ######################################################################
