@@ -4,6 +4,7 @@
 import dataclasses
 import json
 import math
+import re
 import sys
 from typing import Any, Callable, List, Optional, Sequence, Tuple
 
@@ -13,6 +14,8 @@ from aqt import gui_hooks
 from aqt.qt import *
 from aqt.theme import theme_manager
 from aqt.utils import openLink
+
+serverbaseurl = re.compile(r"^.+:\/\/[^\/]+")
 
 # Page for debug messages
 ##########################################################################
@@ -67,14 +70,28 @@ class AnkiWebPage(QWebEnginePage):  # type: ignore
         script.setRunsOnSubFrames(False)
         self.profile().scripts().insert(script)
 
-    def javaScriptConsoleMessage(self, lvl, msg, line, srcID):
+    def javaScriptConsoleMessage(self, level, msg, line, srcID):
         # not translated because console usually not visible,
         # and may only accept ascii text
-        buf = "JS error on line %(a)d: %(b)s" % dict(a=line, b=msg + "\n")
+        if srcID.startswith("data"):
+            srcID = ""
+        else:
+            srcID = serverbaseurl.sub("", srcID[:80], 1)
+        if level == QWebEnginePage.InfoMessageLevel:
+            level = "info"
+        elif level == QWebEnginePage.WarningMessageLevel:
+            level = "warning"
+        elif level == QWebEnginePage.ErrorMessageLevel:
+            level = "error"
+        buf = "JS %(t)s %(f)s:%(a)d %(b)s" % dict(
+            t=level, a=line, f=srcID, b=msg + "\n"
+        )
         # ensure we don't try to write characters the terminal can't handle
         buf = buf.encode(sys.stdout.encoding, "backslashreplace").decode(
             sys.stdout.encoding
         )
+        # output to stdout because it may raise error messages on the anki GUI
+        # https://github.com/ankitects/anki/pull/560
         sys.stdout.write(buf)
 
     def acceptNavigationRequest(self, url, navType, isMainFrame):
@@ -412,7 +429,8 @@ body {{ zoom: {}; background: {}; {} }}
         # print(html)
         self.setHtml(html)
 
-    def webBundlePath(self, path: str) -> str:
+    @classmethod
+    def webBundlePath(cls, path: str) -> str:
         from aqt import mw
 
         if path.startswith("/"):
