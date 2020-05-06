@@ -63,9 +63,10 @@ class _Collection:
         db: DBProxy,
         backend: RustBackend,
         server: Optional["anki.storage.ServerData"] = None,
+        log: bool = False,
     ) -> None:
         self.backend = backend
-        self._debugLog = not server
+        self._debugLog = log
         self.db = db
         self.path = db._path
         self._openLog()
@@ -1011,7 +1012,9 @@ and type=0""",
         to_fix = []
         for id, tags in self.db.execute("select id, tags from notes"):
             norm = unicodedata.normalize("NFC", tags)
-            if not norm.startswith(" ") or not norm.endswith(" "):
+            if not norm.strip():
+                norm = ""
+            elif not norm.startswith(" ") or not norm.endswith(" "):
                 norm = " " + norm + " "
             if norm != tags:
                 to_fix.append((norm, self.usn(), intTime(), id))

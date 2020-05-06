@@ -35,6 +35,7 @@ appHelpSite = HELP_SITE
 from aqt.main import AnkiQt  # isort:skip
 from aqt.profiles import ProfileManager  # isort:skip
 
+profiler = None
 mw: Optional[AnkiQt] = None  # set on init
 
 moduleDir = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
@@ -255,7 +256,7 @@ class AnkiApp(QApplication):
             # previous instance died
             QLocalServer.removeServer(self.KEY)
             self._srv = QLocalServer(self)
-            self._srv.newConnection.connect(self.onRecv)
+            qconnect(self._srv.newConnection, self.onRecv)
             self._srv.listen(self.KEY)
             return False
 
@@ -347,6 +348,21 @@ def setupGL(pm):
         os.environ["QT_OPENGL"] = mode
 
 
+PROFILE_CODE = os.environ.get("ANKI_PROFILE_CODE")
+
+
+def print_profile_results():
+    import io
+    import pstats
+
+    profiler.disable()
+    outputstream = io.StringIO()
+    profiler_status = pstats.Stats(profiler, stream=outputstream)
+    profiler_status.sort_stats("time")
+    profiler_status.print_stats()
+    sys.stderr.write(f"\n{outputstream.getvalue()}\n")
+
+
 def run():
     try:
         _run()
@@ -370,12 +386,19 @@ def _run(argv=None, exec=True):
     If no 'argv' is supplied then 'sys.argv' will be used.
     """
     global mw
+    global profiler
 
     if argv is None:
         argv = sys.argv
 
     # parse args
     opts, args = parseArgs(argv)
+
+    if PROFILE_CODE:
+        import cProfile
+
+        profiler = cProfile.Profile()
+        profiler.enable()
 
     # profile manager
     pm = None
@@ -491,3 +514,6 @@ environment points to a valid, writable folder.""",
         app.exec()
     else:
         return app
+
+    if PROFILE_CODE:
+        print_profile_results()
