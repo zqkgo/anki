@@ -738,7 +738,7 @@ where c.nid = n.id and c.id in %s group by nid"""
             c.nid,
         )
         # and finally, update daily counts
-        n = 1 if c.queue == 3 else c.queue
+        n = 1 if c.queue in (3, 4) else c.queue
         type = ("new", "lrn", "rev")[n]
         self.sched._updateStats(c, type, -1)
         self.sched.reps -= 1
@@ -951,7 +951,7 @@ select id from cards where odid > 0 and did in %s"""
         self.db.execute(
             """
 update cards set due=1000000+due%1000000,mod=?,usn=? where due>=1000000
-and type=0""",
+and type=0 and queue!=4""",
             intTime(),
             self.usn(),
         )
