@@ -8,6 +8,7 @@ import random
 import time
 from heapq import *
 from operator import itemgetter
+from datetime import datetime
 
 # from anki.collection import _Collection
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
@@ -20,6 +21,7 @@ from anki.decks import DeckManager
 from anki.lang import _
 from anki.rsbackend import FormatTimeSpanContext, SchedTimingToday
 from anki.utils import ids2str, intTime
+
 
 # card types: 0=new, 1=lrn, 2=rev, 3=relrn
 # queue types: 0=new, 1=(re)lrn, 2=rev, 3=day (re)lrn,
@@ -55,7 +57,7 @@ class Scheduler:
             self.reset()
         card = self._getCard()
         if card:
-            print("🌟 Scheduler.getCard(): 获取卡片成功，打印卡片信息日志")
+            print("🌟 Scheduler.getCard(): 获取卡片成功，打印卡片信息日志, 创建时间：{}".format(datetime.utcfromtimestamp(card.id//1000+8*3600).strftime('%Y-%m-%d %H:%M:%S')))
             self.col.log(card)
             if not self._burySiblingsOnAnswer:
                 self._burySiblings(card)
