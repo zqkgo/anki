@@ -1737,6 +1737,7 @@ and (queue={QUEUE_TYPE_NEW} or (queue={QUEUE_TYPE_REV} and due<=?))""",
                 except ValueError:
                     pass
         # then bury
+        print("🌟 被bury的卡片IDs: {}".format(toBury))
         if toBury:
             self.buryCards(toBury, manual=False)
 
