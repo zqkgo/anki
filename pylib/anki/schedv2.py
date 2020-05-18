@@ -53,7 +53,6 @@ class Scheduler:
             self.reset()
         card = self._getCard()
         if card:
-            print("🌟 Scheduler.getCard(): 获取卡片成功，打印卡片信息日志, 创建时间：{}".format(datetime.utcfromtimestamp(card.id//1000+8*3600).strftime('%Y-%m-%d %H:%M:%S')))
             self.col.log(card)
             if not self._burySiblingsOnAnswer:
                 self._burySiblings(card)
