@@ -169,9 +169,7 @@ class AddCards(QDialog):
             showWarning(problem, help="AddItems#AddError")
             return None
         if note.model()["type"] == MODEL_CLOZE:
-            if not self.mw.col.models._availClozeOrds(
-                note.model(), note.joinedFields(), False
-            ):
+            if not note.cloze_numbers_in_fields():
                 if not askUser(
                     _(
                         "You have a cloze deletion note type "
@@ -179,17 +177,7 @@ class AddCards(QDialog):
                     )
                 ):
                     return None
-        cards = self.mw.col.addNote(note)
-        if not cards:
-            showWarning(
-                _(
-                    """\
-The input you have provided would make an empty \
-question on all cards."""
-                ),
-                help="AddItems",
-            )
-            return None
+        self.mw.col.add_note(note, self.deckChooser.selectedId())
         self.mw.col.clearUndo()
         self.addHistory(note)
         self.mw.requireReset()
