@@ -640,7 +640,8 @@ class FullSyncer(HttpSyncer):
         if cont == "upgradeRequired":
             hooks.sync_stage_did_change("upgradeRequired")
             return None
-        open(tpath, "wb").write(cont)
+        with open(tpath, "wb") as file:
+            file.write(cont)
         # check the received file is ok
         d = DB(tpath)
         assert d.scalar("pragma integrity_check") == "ok"
@@ -666,6 +667,7 @@ class FullSyncer(HttpSyncer):
             return False
         # apply some adjustments, then upload
         self.col.beforeUpload()
-        if self.req("upload", open(self.col.path, "rb")) != b"OK":
-            return False
+        with open(self.col.path, "rb") as file:
+            if self.req("upload", file) != b"OK":
+                return False
         return True
