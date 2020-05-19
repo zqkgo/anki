@@ -67,6 +67,12 @@ class LoadMetaResult:
     loadError: bool
 
 
+class AnkiRestart(SystemExit):
+    def __init__(self, *args, **kwargs):
+        self.exitcode = kwargs.pop("exitcode", 0)
+        super().__init__(*args, **kwargs)
+
+
 class ProfileManager:
     def __init__(self, base=None):
         self.name = None
@@ -114,10 +120,74 @@ class ProfileManager:
             return os.path.expanduser("~/Documents/Anki")
 
     def maybeMigrateFolder(self):
+        newBase = self.base
         oldBase = self._oldFolderLocation()
 
         if oldBase and not os.path.exists(self.base) and os.path.isdir(oldBase):
+            try:
+                # if anything goes wrong with UI, reset to the old behavior of always migrating
+                self._tryToMigrateFolder(oldBase)
+            except AnkiRestart:
+                raise
+            except:
+                self.base = newBase
+                shutil.move(oldBase, self.base)
+
+    def _tryToMigrateFolder(self, oldBase):
+        from PyQt5 import QtWidgets, QtGui
+
+        app = QtWidgets.QApplication([])
+        icon = QtGui.QIcon()
+        icon.addPixmap(
+            QtGui.QPixmap(":/icons/anki.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off,
+        )
+        window_title = "Data Folder Migration"
+        migration_directories = f"\n\n    {oldBase}\n\nto\n\n    {self.base}"
+
+        confirmation = QMessageBox()
+        confirmation.setIcon(QMessageBox.Warning)
+        confirmation.setWindowIcon(icon)
+        confirmation.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        confirmation.setWindowTitle(window_title)
+        confirmation.setText(
+            "Anki needs to move its data folder from Documents/Anki to a new location. Proceed?"
+        )
+        retval = confirmation.exec()
+
+        if retval == QMessageBox.Ok:
+            progress = QMessageBox()
+            progress.setIcon(QMessageBox.Information)
+            progress.setStandardButtons(QMessageBox.NoButton)
+            progress.setWindowIcon(icon)
+            progress.setWindowTitle(window_title)
+            progress.setText("Please wait...")
+            progress.show()
+            app.processEvents()
+
             shutil.move(oldBase, self.base)
+            progress.hide()
+
+            completion = QMessageBox()
+            completion.setIcon(QMessageBox.Information)
+            completion.setStandardButtons(QMessageBox.Ok)
+            completion.setWindowIcon(icon)
+            completion.setWindowTitle(window_title)
+            completion.setText("Migration complete. Please start Anki again.")
+            completion.show()
+            completion.exec()
+        else:
+            diag = QMessageBox()
+            diag.setIcon(QMessageBox.Warning)
+            diag.setWindowIcon(icon)
+            diag.setStandardButtons(QMessageBox.Ok)
+            diag.setWindowTitle(window_title)
+            diag.setText(
+                "Migration aborted. If you would like to keep the old folder location, please "
+                "see the Startup Options section of the manual. Anki will now quit."
+            )
+            diag.exec()
+
+        raise AnkiRestart(exitcode=0)
 
     # Profile load/save
     ######################################################################
