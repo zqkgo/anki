@@ -16,7 +16,7 @@ import aqt
 import aqt.forms
 from anki import hooks
 from anki.cards import Card
-from anki.collection import _Collection
+from anki.collection import Collection
 from anki.consts import *
 from anki.lang import _, ngettext
 from anki.models import NoteType
@@ -569,7 +569,7 @@ class SidebarModel(QAbstractItemModel):
 class Browser(QMainWindow):
     model: DataModel
     mw: AnkiQt
-    col: _Collection
+    col: Collection
     editor: Optional[Editor]
 
     def __init__(self, mw: AnkiQt) -> None:
@@ -1566,7 +1566,7 @@ where id in %s"""
     def onTogglePreview(self):
         if self._previewer:
             self._previewer.close()
-            self._previewer = None
+            self._on_preview_closed()
         else:
             self._previewer = PreviewDialog(self, self.mw, self._on_preview_closed)
             self._previewer.open()
