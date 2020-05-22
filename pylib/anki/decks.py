@@ -8,7 +8,6 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import anki  # pylint: disable=unused-import
 import anki.backend_pb2 as pb
-from anki import hooks
 from anki.consts import *
 from anki.errors import DeckRenameError
 from anki.lang import _
@@ -96,12 +95,12 @@ class DeckManager:
         deck["name"] = name
         self.update(deck, preserve_usn=False)
 
-        hooks.deck_added(deck)
-
         return deck["id"]
 
     def rem(self, did: int, cardsToo: bool = True, childrenToo: bool = True) -> None:
         "Remove the deck. If cardsToo, delete any cards inside."
+        if isinstance(did, str):
+            did = int(did)
         assert cardsToo and childrenToo
         self.col.backend.remove_deck(did)
 

@@ -8,6 +8,8 @@ To add a new hook:
 - update the hooks list below
 - run 'make develop'
 - send a pull request that includes the changes to this file and hooks.py
+
+In most cases, hooks are better placed in genhooks_gui.py
 """
 
 import os
@@ -22,26 +24,14 @@ hooks = [
     Hook(name="schema_will_change", args=["proceed: bool"], return_type="bool"),
     Hook(
         name="notes_will_be_deleted",
-        args=["col: anki.storage._Collection", "ids: List[int]"],
+        args=["col: anki.collection.Collection", "ids: List[int]"],
         legacy_hook="remNotes",
-    ),
-    Hook(
-        name="deck_added",
-        args=["deck: Dict[str, Any]"],
-        legacy_hook="newDeck",
-        legacy_no_args=True,
     ),
     Hook(name="media_files_did_export", args=["count: int"]),
     Hook(
         name="exporters_list_created",
         args=["exporters: List[Tuple[str, Any]]"],
         legacy_hook="exportersList",
-    ),
-    Hook(
-        name="note_type_added",
-        args=["notetype: Dict[str, Any]"],
-        legacy_hook="newModel",
-        legacy_no_args=True,
     ),
     Hook(name="sync_stage_did_change", args=["stage: str"], legacy_hook="sync"),
     Hook(name="sync_progress_did_change", args=["msg: str"], legacy_hook="syncMsg"),
@@ -100,6 +90,13 @@ hooks = [
         return_type="int",
         doc="""Allows changing the number of rev card for this deck (without
         considering descendants).""",
+    ),
+    # obsolete
+    Hook(name="deck_added", args=["deck: Dict[str, Any]"], doc="Obsolete, do not use."),
+    Hook(
+        name="note_type_added",
+        args=["notetype: Dict[str, Any]"],
+        doc="Obsolete, do not use.",
     ),
 ]
 

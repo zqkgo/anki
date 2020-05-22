@@ -160,19 +160,13 @@ class CardLayout(QDialog):
         self.tform.back_button.setToolTip(shortcut("Ctrl+2"))
         self.tform.style_button.setToolTip(shortcut("Ctrl+3"))
         QShortcut(  # type: ignore
-            QKeySequence("Ctrl+1"),
-            self,
-            activated=lambda: self.tform.front_button.setChecked(True),
+            QKeySequence("Ctrl+1"), self, activated=self.tform.front_button.click,
         )
         QShortcut(  # type: ignore
-            QKeySequence("Ctrl+2"),
-            self,
-            activated=lambda: self.tform.back_button.setChecked(True),
+            QKeySequence("Ctrl+2"), self, activated=self.tform.back_button.click,
         )
         QShortcut(  # type: ignore
-            QKeySequence("Ctrl+3"),
-            self,
-            activated=lambda: self.tform.style_button.setChecked(True),
+            QKeySequence("Ctrl+3"), self, activated=self.tform.style_button.click,
         )
 
     # Main area setup
@@ -222,6 +216,7 @@ class CardLayout(QDialog):
 
         self.current_editor_index = 0
         self.tform.edit_area.setAcceptRichText(False)
+        self.tform.edit_area.setFont(QFont("Courier"))
         if qtminor < 10:
             self.tform.edit_area.setTabStopWidth(30)
         else:
@@ -275,7 +270,8 @@ class CardLayout(QDialog):
             cursor = editor.textCursor()
             cursor.movePosition(QTextCursor.Start)
             editor.setTextCursor(cursor)
-            editor.find(text)
+            if not editor.find(text):
+                tooltip("No matches found.")
 
     def on_search_next(self):
         text = self.tform.search_edit.text()
@@ -751,8 +747,9 @@ Enter deck to place new %s cards in, or leave blank:"""
                 showWarning("Unable to save changes: " + str(e))
                 return
             self.mw.reset()
-            tooltip("Changes saved.", parent=self.mw)
+            tooltip("Changes saved.", parent=self.parent())
             self.cleanup()
+            gui_hooks.sidebar_should_refresh_notetypes()
             return QDialog.accept(self)
 
         self.mw.taskman.with_progress(save, on_done)
