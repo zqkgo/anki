@@ -16,7 +16,6 @@ from anki.lang import _
 from anki.rsbackend import DeckTreeNode, FormatTimeSpanContext, SchedTimingToday
 from anki.utils import ids2str, intTime
 
-
 # card types: 0=new, 1=lrn, 2=rev, 3=relrn
 # queue types: 0=new, 1=(re)lrn, 2=rev, 3=day (re)lrn,
 #   4=preview, -1=suspended, -2=sibling buried, -3=manually buried

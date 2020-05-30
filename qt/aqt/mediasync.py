@@ -84,8 +84,8 @@ class MediaSyncer:
             shard_str = str(shard)
         else:
             shard_str = ""
+        t = f"{SYNC_BASE % shard_str}msync/"
         return "http://127.0.0.1:27701/msync/"
-        # return f"{SYNC_BASE % shard_str}msync/"
 
     def _log_and_notify(self, entry: LogEntry) -> None:
         entry_with_time = LogEntryWithTime(time=intTime(), entry=entry)

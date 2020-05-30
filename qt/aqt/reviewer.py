@@ -261,7 +261,7 @@ class Reviewer:
         if not proceed:
             return
         self.mw.col.sched.answerCard(self.card, ease)
-         # 设置card属性之后，调用钩子函数
+        # 设置card属性之后，调用钩子函数
         gui_hooks.reviewer_did_answer_card(self, self.card, ease)
         self._answeredIds.append(self.card.id)
         # 内存数据懒惰落库
@@ -323,7 +323,7 @@ class Reviewer:
                 "selectedAnswerButton()", self._onAnswerButton
             )
 
-    # 
+    #
     def _onAnswerButton(self, val: str) -> None:
         # button selected?
         if val and val in "1234":

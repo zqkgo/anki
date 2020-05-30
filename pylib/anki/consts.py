@@ -25,14 +25,14 @@ QUEUE_TYPE_DAY_LEARN_RELEARN = 3
 QUEUE_TYPE_PREVIEW = 4
 
 queueName = {
-    QUEUE_TYPE_MANUALLY_BURIED:"手动埋藏队列",
-    QUEUE_TYPE_SIBLING_BURIED:"sibling卡片埋藏队列",
-    QUEUE_TYPE_SUSPENDED:"暂停(suspended)队列",
+    QUEUE_TYPE_MANUALLY_BURIED: "手动埋藏队列",
+    QUEUE_TYPE_SIBLING_BURIED: "sibling卡片埋藏队列",
+    QUEUE_TYPE_SUSPENDED: "暂停(suspended)队列",
     QUEUE_TYPE_NEW: "新卡片队列",
-    QUEUE_TYPE_LRN:"学习中的卡片队列",
-    QUEUE_TYPE_REV:"复习卡片队列",
-    QUEUE_TYPE_DAY_LEARN_RELEARN:"重新学习卡片队列",
-    QUEUE_TYPE_PREVIEW:"预习卡片队列",
+    QUEUE_TYPE_LRN: "学习中的卡片队列",
+    QUEUE_TYPE_REV: "复习卡片队列",
+    QUEUE_TYPE_DAY_LEARN_RELEARN: "重新学习卡片队列",
+    QUEUE_TYPE_PREVIEW: "预习卡片队列",
 }
 
 # Card types
@@ -43,10 +43,10 @@ CARD_TYPE_REV = 2
 CARD_TYPE_RELEARNING = 3
 
 cardTypeName = {
-    CARD_TYPE_NEW : "新卡片",
-    CARD_TYPE_LRN : "学习中的卡片",
-    CARD_TYPE_REV : "复习卡片",
-    CARD_TYPE_RELEARNING : "重新学习的卡片",
+    CARD_TYPE_NEW: "新卡片",
+    CARD_TYPE_LRN: "学习中的卡片",
+    CARD_TYPE_REV: "复习卡片",
+    CARD_TYPE_RELEARNING: "重新学习的卡片",
 }
 
 # removal types

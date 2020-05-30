@@ -470,7 +470,7 @@ class HttpSyncer:
         self.prefix = "sync/"
 
     def syncURL(self) -> str:
-        # url = SYNC_BASE % (self.hostNum or "")
+        url = SYNC_BASE % (self.hostNum or "")
         url = "http://127.0.0.1:27701/"
         return url + self.prefix
 
